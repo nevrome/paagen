@@ -62,5 +62,16 @@ parseTest = OP.strOption (
 
 runTest :: TestOptions -> IO ()
 runTest (TestOptions test) = do
-    hPutStrLn stderr $ "test"
+    hPutStrLn stderr $ show (haversineDist (51.510357, -0.116773) (38.889931, -77.009003))
 
+haversineDist :: (Double, Double) -> (Double, Double) -> Double 
+haversineDist (lat1, lon1) (lat2, lon2) =
+    let r = 6371000  -- radius of Earth in meters
+        toRadians n = n * pi / 180
+        square x = x * x
+        cosr = cos . toRadians
+        dlat = toRadians (lat1 - lat2) / 2
+        dlon = toRadians (lon1 - lon2) / 2
+        a = square (sin dlat) + cosr lat1 * cosr lat2 * square (sin dlon)
+        c = 2 * atan2 (sqrt a) (sqrt (1 - a))
+    in (r * c) / 1000
