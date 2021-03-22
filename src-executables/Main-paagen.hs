@@ -6,6 +6,10 @@ import           Control.Applicative    ((<|>))
 import           Control.Exception      (catch)
 import           Data.Version           (showVersion)
 import qualified Options.Applicative    as OP
+import           Poseidon.Package       (PoseidonPackage (..),
+                                        getIndividuals,
+                                        getJointGenotypeData,
+                                        readPoseidonPackageCollection)
 import           System.Exit            (exitFailure)
 import           System.IO              (hPutStrLn, stderr)
 
@@ -60,8 +64,14 @@ parseTest = OP.strOption (
     OP.showDefault
     )
 
+-- Actual program code
+
 runTest :: TestOptions -> IO ()
 runTest (TestOptions test) = do
+    -- load Poseidon packages -- 
+    allPackages <- readPoseidonPackageCollection True True False ["/home/clemens/test/fetchtest/already_ready"]
+    -- 
+    let startCoords = (51.510357, -0.116773)
     hPutStrLn stderr $ show (haversineDist (51.510357, -0.116773) (38.889931, -77.009003))
 
 haversineDist :: (Double, Double) -> (Double, Double) -> Double 
