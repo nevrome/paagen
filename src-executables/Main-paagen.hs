@@ -15,11 +15,11 @@ import           System.IO              (hPutStrLn, stderr)
 
 import Data.Maybe (isJust, fromMaybe, catMaybes)
 import Poseidon.Janno
-import Data.List (nub, tails, sortBy, intersect)
+import Data.List (nub, tails, sortBy, intersect, maximumBy, group, sort)
 import qualified Data.Vector                as V
 import           SequenceFormats.Eigenstrat (EigenstratIndEntry (..),
                                              EigenstratSnpEntry (..), GenoLine,
-                                             writeEigenstrat)
+                                             writeEigenstrat, GenoEntry (..))
 import Poseidon.GenotypeData
 import qualified Pipes.Prelude              as P
 import           Pipes.Safe                 (SafeT (..), runSafeT, throwM)
@@ -27,6 +27,7 @@ import Control.Monad (forM)
 import           System.FilePath            ((<.>), (</>))
 import Pipes
 import           System.Console.ANSI        (hClearLine, hSetCursorColumn)
+import Data.Function (on)
 
 data TestOptions = TestOptions
     { _inTest :: String
@@ -93,7 +94,7 @@ runTest (TestOptions test) = do
         positionOfInterest = IndsWithPosition "poi" $ SpatialTemporalPosition 1000 (Latitude 47.82) (Longitude 47.82)
         distancesToPoi = distanceOneToAll positionOfInterest stInds
     -- get X closest inds
-        closestInds = getXClosestInds 5 distancesToPoi
+        closestInds = getXClosestInds 50 distancesToPoi
     -- determine relevant packages
     relevantPackages <- filterPackagesByInds closestInds allPackages
     indices <- extractIndIndices closestInds relevantPackages
@@ -105,7 +106,7 @@ runTest (TestOptions test) = do
         let newEigenstratIndEntries = [eigenstratIndEntriesV V.! i | i <- indices]
         let [outG, outS, outI] = map ("/home/clemens/test/paagentest" </>) ["huhu.geno", "huhu.snp", "huhu.ind"]
         let outConsumer = writeEigenstrat outG outS outI newEigenstratIndEntries
-        runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.map (selectIndices indices) >-> outConsumer
+        runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.map (mergeIndividuals indices) >-> outConsumer
         liftIO $ hClearLine stderr
         liftIO $ hSetCursorColumn stderr 0
         liftIO $ hPutStrLn stderr "SNPs processed: All done"
@@ -114,6 +115,21 @@ runTest (TestOptions test) = do
 
 selectIndices :: [Int] -> (EigenstratSnpEntry, GenoLine) -> (EigenstratSnpEntry, GenoLine)
 selectIndices indices (snpEntry, genoLine) = (snpEntry, V.fromList [genoLine V.! i | i <- indices])
+
+mergeIndividuals :: [Int] -> (EigenstratSnpEntry, GenoLine) -> (EigenstratSnpEntry, GenoLine)
+mergeIndividuals indices (snpEntry, genoLine) = 
+    let relevantGenoEntries = [genoLine V.! i | i <- indices]
+        modeGenoEntry = mostCommon relevantGenoEntries
+    in (snpEntry, V.fromList [modeGenoEntry])
+
+mostCommon :: Ord a => [a] -> a
+mostCommon = head . maximumBy (compare `on` length) . group . sort
+
+instance Ord GenoEntry where
+    compare HomRef Het     = GT
+    compare Het HomAlt     = GT
+    compare HomAlt Missing = GT
+    compare _ _            = EQ
 
 extractIndIndices :: [String] -> [PoseidonPackage] -> IO [Int]
 extractIndIndices indNames relevantPackages = do
