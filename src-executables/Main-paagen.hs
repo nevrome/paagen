@@ -13,9 +13,9 @@ import           Poseidon.Package       (PoseidonPackage (..),
 import           System.Exit            (exitFailure)
 import           System.IO              (hPutStrLn, stderr)
 
-import Data.Maybe (isJust, fromMaybe, catMaybes)
+import Data.Maybe (isJust, fromMaybe, catMaybes, fromJust)
 import Poseidon.Janno
-import Data.List (nub, tails, sortBy, intersect, maximumBy, group, sort, intercalate)
+import Data.List (nub, tails, sortBy, intersect, maximumBy, group, sort, intercalate, elemIndex, elemIndices)
 import qualified Data.Vector                as V
 import           SequenceFormats.Eigenstrat (EigenstratIndEntry (..),
                                              EigenstratSnpEntry (..), GenoLine,
@@ -94,22 +94,47 @@ runTest (TestOptions test) = do
         positionOfInterest = IndsWithPosition "poi" $ SpatialTemporalPosition 1000 (Latitude 47.82) (Longitude 47.82)
         distancesToPoi = distanceOneToAll positionOfInterest stInds
     -- get X closest inds
-        closestInds = getClosestInds 50 distancesToPoi
-    putStrLn $ "Closest individuals: " ++ intercalate ", " closestInds
+        closest = getClosestInds 50 distancesToPoi
+        closestIndividuals = map fst closest
+        closestDistances = map snd closest
+        closestWeights = distToWeight closestDistances
+    putStrLn $ "Closest individuals: " ++ intercalate ", " closestIndividuals
     -- determine relevant packages
-    relevantPackages <- filterPackagesByInds closestInds allPackages
-    indices <- extractIndIndices closestInds relevantPackages
+    relevantPackages <- filterPackagesByInds closestIndividuals allPackages
+    closestIndices <- extractIndIndices closestIndividuals relevantPackages
     -- compile genotype data
     runSafeT $ do
         (eigenstratIndEntries, eigenstratProd) <- getJointGenotypeData False False relevantPackages
-        let eigenstratIndEntriesV = V.fromList eigenstratIndEntries
-        let newEigenstratIndEntries = [eigenstratIndEntriesV V.! i | i <- indices]
         let [outG, outS, outI] = map ("/home/clemens/test/paagentest" </>) ["huhu.geno", "huhu.snp", "huhu.ind"]
-        let outConsumer = writeEigenstrat outG outS outI newEigenstratIndEntries
-        runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.map (mergeIndividuals indices) >-> outConsumer
+        let outConsumer = writeEigenstrat outG outS outI [EigenstratIndEntry "poi" Unknown "group_of_poi"]
+        runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.map (mergeIndividuals closestIndices closestWeights) >-> outConsumer
         liftIO $ hClearLine stderr
         liftIO $ hSetCursorColumn stderr 0
         liftIO $ hPutStrLn stderr "SNPs processed: All done"
+
+mergeIndividuals :: [Int] -> [Int] -> (EigenstratSnpEntry, GenoLine) -> (EigenstratSnpEntry, GenoLine)
+mergeIndividuals individualIndices weights (snpEntry, genoLine) = 
+    let relevantGenoEntries = [genoLine V.! i | i <- individualIndices]
+        genoEntryIndices = getGenoIndices relevantGenoEntries
+        weightsPerGenoEntry = sumWeights genoEntryIndices weights
+        -- modeGenoEntry = mostCommon relevantGenoEntries
+        selectedGenoEntry = fst $ maximumBy (\ (_, a) (_, b) -> compare a b) weightsPerGenoEntry
+    in (snpEntry, V.fromList [selectedGenoEntry])
+
+getGenoIndices :: Eq a => [a] -> [(a, [Int])]
+getGenoIndices xs = 
+    let unique = nub xs
+        indices = map (\v -> elemIndices v xs) unique
+    in  zip unique indices
+
+sumWeights :: [(a, [Int])] -> [Int] -> [(a, Int)]
+sumWeights xs weights = map (\(x, ys) -> (x, sum $ subset ys weights)) xs
+    where
+        subset :: [Int] -> [a] -> [a]
+        subset indices xs = [xs !! i | i <- indices]
+
+-- mostCommon :: Ord a => [a] -> a
+-- mostCommon = head . maximumBy (compare `on` length) . group . sort
 
 data IndsWithPosition = IndsWithPosition {
       ind :: String
@@ -164,8 +189,21 @@ haversineDist (lat1, lon1) (lat2, lon2) =
         c = 2 * atan2 (sqrt a) (sqrt (1 - a))
     in (r * c) / 1000
 
-getClosestInds :: Int -> [(String, String, Double)] -> [String]
-getClosestInds n dists = map (\(_,x,_) -> x) $ take n $ sortBy (\(_,_,x) (_,_,y) -> compare x y) dists
+getClosestInds :: Int -> [(String, String, Double)] -> [(String, Double)]
+getClosestInds n dists = map (\(_,x,y) -> (x,y)) $ take n $ sortBy (\(_,_,x) (_,_,y) -> compare x y) dists
+
+distToWeight :: [Double] -> [Int]
+distToWeight distances = 
+    let closeness = map (1/) distances
+    in map round $ rescale 0 100 closeness
+
+rescale :: Double -> Double -> [Double] -> [Double]
+rescale minNew maxNew xs = 
+    let minOld = minimum xs
+        maxOld = maximum xs
+        a = (maxNew - minNew) / (maxOld - minOld)
+        bs = map (\x -> x - maxOld) xs
+    in map (\x -> a * x + maxNew) bs
 
 filterPackagesByInds :: [String] -> [PoseidonPackage] -> IO [PoseidonPackage]
 filterPackagesByInds indNamesStats packages = do
@@ -192,12 +230,3 @@ zipGroup list nestedList =
         listWithlenghtsNestedList = zip lenghtsNestedList list
         longerA = map (uncurry replicate) listWithlenghtsNestedList
     in zip3 [0..] (concat longerA) (concat nestedList)
-
-mergeIndividuals :: [Int] -> (EigenstratSnpEntry, GenoLine) -> (EigenstratSnpEntry, GenoLine)
-mergeIndividuals indices (snpEntry, genoLine) = 
-    let relevantGenoEntries = [genoLine V.! i | i <- indices]
-        modeGenoEntry = mostCommon relevantGenoEntries
-    in (snpEntry, V.fromList [modeGenoEntry])
-
-mostCommon :: Ord a => [a] -> a
-mostCommon = head . maximumBy (compare `on` length) . group . sort
