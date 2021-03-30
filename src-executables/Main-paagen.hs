@@ -13,10 +13,17 @@ import           Poseidon.Package       (PoseidonPackage (..),
 import           System.Exit            (exitFailure)
 import           System.IO              (hPutStrLn, stderr)
 
-import Data.Maybe (isJust, fromMaybe)
+import Data.Maybe (isJust, fromMaybe, catMaybes)
 import Poseidon.Janno
-import Data.List (nub, tails, sortBy)
-
+import Data.List (nub, tails, sortBy, intersect)
+import qualified Data.Vector                as V
+import           SequenceFormats.Eigenstrat (EigenstratIndEntry (..),
+                                             EigenstratSnpEntry (..), GenoLine,
+                                             writeEigenstrat)
+import Poseidon.GenotypeData
+import qualified Pipes.Prelude              as P
+import           Pipes.Safe                 (SafeT (..), runSafeT, throwM)
+import Control.Monad (forM)
 
 data TestOptions = TestOptions
     { _inTest :: String
@@ -84,8 +91,55 @@ runTest (TestOptions test) = do
         distancesToPoi = distanceOneToAll positionOfInterest stInds
     -- get X closest inds
         closestInds = getXClosestInds 5 distancesToPoi
-    -- get 
+    -- determine relevant packages
+    relevantPackages <- filterPackagesByInds closestInds allPackages
+    indices <- extractIndIndices closestInds relevantPackages
+    print indices
+    -- compile genotype data
+    -- runSafeT $ do
+    --     (eigenstratIndEntries, eigenstratProd) <- getJointGenotypeData True True relevantPackages
+    --     let eigenstratIndEntriesV = V.fromList eigenstratIndEntries
+    --     let newEigenstratIndEntries = [eigenstratIndEntriesV V.! i | i <- indices]
+    --     -- TODO: This check might be redundant now, because the input data is now already
+    --     -- screened for cross-file order issues
+    --     when ([n | EigenstratIndEntry n _ _ <-  newEigenstratIndEntries] /= jannoIndIds) $
+    --         throwM (PoseidonCrossFileConsistencyException "new package" "Cannot forge: order of individuals in genotype indidividual files and Janno-files not consistent")
+    --     let [outG, outS, outI] = map (outPath </>) [outGeno, outSnp, outInd]
+    --     let outConsumer = case outFormat of
+    --             GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI newEigenstratIndEntries
+    --             GenotypeFormatPlink -> writePlink outG outS outI newEigenstratIndEntries
+    --     runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.map (selectIndices indices) >-> outConsumer
+    --     liftIO $ hClearLine stderr
+    --     liftIO $ hSetCursorColumn stderr 0
+    --     liftIO $ hPutStrLn stderr "SNPs processed: All done"
+    -- 
     print closestInds
+
+extractIndIndices :: [String] -> [PoseidonPackage] -> IO [Int]
+extractIndIndices indNames relevantPackages = do
+    let allPackageNames = map posPacTitle relevantPackages
+    allIndEntries <- mapM getIndividuals relevantPackages
+    let filterFunc (_ , pacName, EigenstratIndEntry ind _ group) = ind `elem` indNames
+    return $ map extractFirst $ filter filterFunc (zipGroup allPackageNames allIndEntries)
+
+extractFirst :: (a, b, c) -> a
+extractFirst (a,_,_) = a
+
+zipGroup :: [a] -> [[b]] -> [(Int,a,b)]
+zipGroup list nestedList =
+    let lenghtsNestedList = map length nestedList
+        listWithlenghtsNestedList = zip lenghtsNestedList list
+        longerA = map (uncurry replicate) listWithlenghtsNestedList
+    in zip3 [0..] (concat longerA) (concat nestedList)
+
+filterPackagesByInds :: [String] -> [PoseidonPackage] -> IO [PoseidonPackage]
+filterPackagesByInds indNamesStats packages = do
+    fmap catMaybes . forM packages $ \pac -> do
+        inds <- getIndividuals pac
+        let indNamesPac   = [ind   | EigenstratIndEntry ind _ _     <- inds]
+        if  length (intersect indNamesPac indNamesStats) > 0
+        then return (Just pac)
+        else return Nothing
 
 getXClosestInds :: Int -> [(String, String, Double)] -> [String]
 getXClosestInds n dists = map (\(_,x,_) -> x) $ take n $ sortBy (\(_,_,x) (_,_,y) -> compare x y) dists
