@@ -15,7 +15,7 @@ import           System.IO              (hPutStrLn, stderr)
 
 import Data.Maybe (isJust, fromMaybe)
 import Poseidon.Janno
-import Data.List (nub, tails)
+import Data.List (nub, tails, sortBy)
 
 
 data TestOptions = TestOptions
@@ -82,8 +82,13 @@ runTest (TestOptions test) = do
     -- calculate distances
         positionOfInterest = IndsWithPosition "poi" $ SpatialTemporalPosition 1000 (Latitude 47.82) (Longitude 47.82)
         distancesToPoi = distanceOneToAll positionOfInterest stInds
+    -- get X closest inds
+        closestInds = getXClosestInds 5 distancesToPoi
     -- get 
-    print distancesToPoi
+    print closestInds
+
+getXClosestInds :: Int -> [(String, String, Double)] -> [String]
+getXClosestInds n dists = map (\(_,x,_) -> x) $ take n $ sortBy (\(_,_,x) (_,_,y) -> compare x y) dists
 
 distanceOneToAll :: IndsWithPosition -> [IndsWithPosition] -> [(String, String, Double)]
 distanceOneToAll poi = map (distanceOneToOne poi)
