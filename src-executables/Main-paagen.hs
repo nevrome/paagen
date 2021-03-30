@@ -13,6 +13,11 @@ import           Poseidon.Package       (PoseidonPackage (..),
 import           System.Exit            (exitFailure)
 import           System.IO              (hPutStrLn, stderr)
 
+import Data.Maybe (isJust, fromMaybe)
+import Poseidon.Janno
+import Data.List (nub, tails)
+
+
 data TestOptions = TestOptions
     { _inTest :: String
     }
@@ -70,9 +75,52 @@ runTest :: TestOptions -> IO ()
 runTest (TestOptions test) = do
     -- load Poseidon packages -- 
     allPackages <- readPoseidonPackageCollection True True False ["/home/clemens/test/fetchtest/already_ready"]
-    -- 
-    let startCoords = (51.510357, -0.116773)
-    hPutStrLn stderr $ show (haversineDist (51.510357, -0.116773) (38.889931, -77.009003))
+    -- load janno tables
+    let jannos = concatMap posPacJanno allPackages
+    -- transform to spatiotemporal positions
+        stInds = jannosToSTInds jannos
+    -- calculate all distances
+        stIndsPairs = pairs stInds
+    print $ length stInds
+    print $ length stIndsPairs
+
+
+
+pairs :: [a] -> [(a, a)]
+pairs l = [(x,y) | (x:ys) <- tails l, y <- ys]
+
+spatioTemporalDistance :: SpatialTemporalPosition -> SpatialTemporalPosition -> Double -> Double 
+spatioTemporalDistance 
+    (SpatialTemporalPosition t1 (Latitude lat1) (Longitude lon1)) 
+    (SpatialTemporalPosition t2 (Latitude lat2) (Longitude lon2)) 
+    scaling =
+    let tDist = fromIntegral (abs (t1 - t2)) * scaling
+        sDist = haversineDist (lat1, lon1) (lat2, lon2)
+    in sqrt $ tDist^2 + sDist^2
+
+jannosToSTInds :: [JannoRow] -> [IndsWithPosition]
+jannosToSTInds jannos = 
+    let filterPos x = isJust (jDateBCADMedian x) && isJust (jLatitude x) && isJust (jLongitude x)
+        transformTo x = IndsWithPosition (jIndividualID x) $
+            SpatialTemporalPosition 
+                (fromMaybe 0 (jDateBCADMedian x)) 
+                (fromMaybe (Latitude 0) (jLatitude x))
+                (fromMaybe (Longitude 0) (jLongitude x))
+    in  map transformTo $ filter filterPos jannos
+
+extractLat (Latitude x) = x
+extractLon (Longitude x) = x
+
+data IndsWithPosition = IndsWithPosition {
+      id :: String
+    , pos :: SpatialTemporalPosition
+} deriving (Show)
+
+data SpatialTemporalPosition = SpatialTemporalPosition {
+      time :: Int
+    , lat :: Latitude 
+    , lon :: Longitude
+} deriving (Show)
 
 haversineDist :: (Double, Double) -> (Double, Double) -> Double 
 haversineDist (lat1, lon1) (lat2, lon2) =
