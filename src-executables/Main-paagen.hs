@@ -79,21 +79,29 @@ runTest (TestOptions test) = do
     let jannos = concatMap posPacJanno allPackages
     -- transform to spatiotemporal positions
         stInds = jannosToSTInds jannos
-    -- calculate all distances
-        stIndsPairs = pairs stInds
-    print $ length stInds
-    print $ length stIndsPairs
+    -- calculate distances
+        positionOfInterest = IndsWithPosition "poi" $ SpatialTemporalPosition 1000 (Latitude 47.82) (Longitude 47.82)
+        distancesToPoi = distanceOneToAll positionOfInterest stInds
+    -- get 
+    print distancesToPoi
 
+distanceOneToAll :: IndsWithPosition -> [IndsWithPosition] -> [(String, String, Double)]
+distanceOneToAll poi = map (distanceOneToOne poi)
 
+distanceOneToOne :: IndsWithPosition -> IndsWithPosition -> (String, String, Double)
+distanceOneToOne i1 i2 = (ind i1, ind i2, spatioTemporalDistance 1 (pos i1) (pos i2))
 
-pairs :: [a] -> [(a, a)]
-pairs l = [(x,y) | (x:ys) <- tails l, y <- ys]
+-- distanceForPair :: (IndsWithPosition, IndsWithPosition) -> (String, String, Double)
+-- distanceForPair (i1, i2) = (ind i1, ind i2, spatioTemporalDistance 1 (pos i1) (pos i2))
 
-spatioTemporalDistance :: SpatialTemporalPosition -> SpatialTemporalPosition -> Double -> Double 
+-- pairs :: [a] -> [(a, a)]
+-- pairs l = [(x,y) | (x:ys) <- tails l, y <- ys]
+
+spatioTemporalDistance :: Double -> SpatialTemporalPosition -> SpatialTemporalPosition -> Double 
 spatioTemporalDistance 
+    scaling
     (SpatialTemporalPosition t1 (Latitude lat1) (Longitude lon1)) 
-    (SpatialTemporalPosition t2 (Latitude lat2) (Longitude lon2)) 
-    scaling =
+    (SpatialTemporalPosition t2 (Latitude lat2) (Longitude lon2)) =
     let tDist = fromIntegral (abs (t1 - t2)) * scaling
         sDist = haversineDist (lat1, lon1) (lat2, lon2)
     in sqrt $ tDist^2 + sDist^2
@@ -108,11 +116,8 @@ jannosToSTInds jannos =
                 (fromMaybe (Longitude 0) (jLongitude x))
     in  map transformTo $ filter filterPos jannos
 
-extractLat (Latitude x) = x
-extractLon (Longitude x) = x
-
 data IndsWithPosition = IndsWithPosition {
-      id :: String
+      ind :: String
     , pos :: SpatialTemporalPosition
 } deriving (Show)
 
