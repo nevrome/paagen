@@ -24,6 +24,9 @@ import Poseidon.GenotypeData
 import qualified Pipes.Prelude              as P
 import           Pipes.Safe                 (SafeT (..), runSafeT, throwM)
 import Control.Monad (forM)
+import           System.FilePath            ((<.>), (</>))
+import Pipes
+import           System.Console.ANSI        (hClearLine, hSetCursorColumn)
 
 data TestOptions = TestOptions
     { _inTest :: String
@@ -96,24 +99,21 @@ runTest (TestOptions test) = do
     indices <- extractIndIndices closestInds relevantPackages
     print indices
     -- compile genotype data
-    -- runSafeT $ do
-    --     (eigenstratIndEntries, eigenstratProd) <- getJointGenotypeData True True relevantPackages
-    --     let eigenstratIndEntriesV = V.fromList eigenstratIndEntries
-    --     let newEigenstratIndEntries = [eigenstratIndEntriesV V.! i | i <- indices]
-    --     -- TODO: This check might be redundant now, because the input data is now already
-    --     -- screened for cross-file order issues
-    --     when ([n | EigenstratIndEntry n _ _ <-  newEigenstratIndEntries] /= jannoIndIds) $
-    --         throwM (PoseidonCrossFileConsistencyException "new package" "Cannot forge: order of individuals in genotype indidividual files and Janno-files not consistent")
-    --     let [outG, outS, outI] = map (outPath </>) [outGeno, outSnp, outInd]
-    --     let outConsumer = case outFormat of
-    --             GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI newEigenstratIndEntries
-    --             GenotypeFormatPlink -> writePlink outG outS outI newEigenstratIndEntries
-    --     runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.map (selectIndices indices) >-> outConsumer
-    --     liftIO $ hClearLine stderr
-    --     liftIO $ hSetCursorColumn stderr 0
-    --     liftIO $ hPutStrLn stderr "SNPs processed: All done"
+    runSafeT $ do
+        (eigenstratIndEntries, eigenstratProd) <- getJointGenotypeData True True relevantPackages
+        let eigenstratIndEntriesV = V.fromList eigenstratIndEntries
+        let newEigenstratIndEntries = [eigenstratIndEntriesV V.! i | i <- indices]
+        let [outG, outS, outI] = map ("/home/clemens/test/paagentest" </>) ["huhu.geno", "huhu.snp", "huhu.ind"]
+        let outConsumer = writeEigenstrat outG outS outI newEigenstratIndEntries
+        runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.map (selectIndices indices) >-> outConsumer
+        liftIO $ hClearLine stderr
+        liftIO $ hSetCursorColumn stderr 0
+        liftIO $ hPutStrLn stderr "SNPs processed: All done"
     -- 
     print closestInds
+
+selectIndices :: [Int] -> (EigenstratSnpEntry, GenoLine) -> (EigenstratSnpEntry, GenoLine)
+selectIndices indices (snpEntry, genoLine) = (snpEntry, V.fromList [genoLine V.! i | i <- indices])
 
 extractIndIndices :: [String] -> [PoseidonPackage] -> IO [Int]
 extractIndIndices indNames relevantPackages = do
