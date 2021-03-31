@@ -161,9 +161,17 @@ runGen (GenOptions baseDirs poi numNeighbors outDir) = do
 mergeIndividuals :: [Int] -> [Int] -> (EigenstratSnpEntry, GenoLine) -> (EigenstratSnpEntry, GenoLine)
 mergeIndividuals individualIndices weights (snpEntry, genoLine) = 
     let relevantGenoEntries = [genoLine V.! i | i <- individualIndices]
-        genoEntryIndices = getGenoIndices relevantGenoEntries
+        -- only keep Missing if there is no other option
+        genoEntriesWithoutMissingIfOthersAvailable = 
+            if nub relevantGenoEntries == [Missing]
+            then relevantGenoEntries
+            else filter (/= Missing) relevantGenoEntries
+        -- count occurrence of GenoEntries
+        genoEntryIndices = getGenoIndices genoEntriesWithoutMissingIfOthersAvailable
+        -- sum distance-based weight for each GenoEntry
         weightsPerGenoEntry = sumWeights genoEntryIndices weights
         -- modeGenoEntry = mostCommon relevantGenoEntries
+        -- select GenoEntry with highest weight sum
         selectedGenoEntry = fst $ maximumBy (\ (_, a) (_, b) -> compare a b) weightsPerGenoEntry
     in (snpEntry, V.fromList [selectedGenoEntry])
 
