@@ -1,34 +1,30 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import           Paths_paagen      (version)
+import           Paths_paagen                   (version)
 
-import           Control.Applicative    ((<|>))
-import           Control.Exception      (catch)
-import           Data.Version           (showVersion)
-import qualified Options.Applicative    as OP
-import           Poseidon.Package       (PoseidonPackage (..),
-                                        getIndividuals,
-                                        getJointGenotypeData,
-                                        readPoseidonPackageCollection)
-import           System.Exit            (exitFailure)
-import           System.IO              (hPutStrLn, stderr)
-
-import Data.Maybe (isJust, fromMaybe, catMaybes, fromJust)
-import Poseidon.Janno
-import Data.List (nub, tails, sortBy, intersect, maximumBy, group, sort, intercalate, elemIndex, elemIndices)
-import qualified Data.Vector                as V
-import           SequenceFormats.Eigenstrat (EigenstratIndEntry (..),
-                                             EigenstratSnpEntry (..), GenoLine,
-                                             writeEigenstrat, GenoEntry (..))
-import Poseidon.GenotypeData
-import qualified Pipes.Prelude              as P
-import           Pipes.Safe                 (SafeT (..), runSafeT, throwM)
-import Control.Monad (forM)
-import           System.FilePath            ((<.>), (</>))
-import Pipes
-import           System.Console.ANSI        (hClearLine, hSetCursorColumn)
-import Data.Function (on)
-import SequenceFormats.Plink (writePlink)
+import           Control.Applicative            ((<|>))
+import           Control.Exception              (catch)
+import           Control.Monad                  (forM)
+import           Data.Function                  (on)
+import           Data.List                      (nub, tails, sortBy, intersect, maximumBy, group, sort, intercalate, elemIndex, elemIndices)
+import           Data.Maybe                     (isJust, fromMaybe, catMaybes, fromJust)
+import qualified Data.Vector                    as V
+import           Data.Version                   (showVersion)
+import qualified Options.Applicative            as OP
+import           Pipes
+import qualified Pipes.Prelude                  as P
+import           Pipes.Safe                     (SafeT (..), runSafeT, throwM)
+import           Poseidon.GenotypeData
+import           Poseidon.Janno
+import           Poseidon.Package
+import           SequenceFormats.Eigenstrat     (EigenstratIndEntry (..),
+                                                EigenstratSnpEntry (..), GenoLine,
+                                                writeEigenstrat, GenoEntry (..))
+import           SequenceFormats.Plink          (writePlink)
+import           System.Console.ANSI            (hClearLine, hSetCursorColumn)
+import           System.Exit                    (exitFailure)
+import           System.FilePath                ((<.>), (</>))
+import           System.IO                      (hPutStrLn, stderr)
 
 -- CLI interface configuration
 
