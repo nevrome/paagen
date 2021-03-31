@@ -28,6 +28,7 @@ import           System.FilePath            ((<.>), (</>))
 import Pipes
 import           System.Console.ANSI        (hClearLine, hSetCursorColumn)
 import Data.Function (on)
+import SequenceFormats.Plink (writePlink)
 
 -- CLI interface configuration
 
@@ -35,6 +36,7 @@ data GenOptions = GenOptions {
       _optBaseDirs :: [FilePath]
     , _optSpatioTemporalPosition :: SpatialTemporalPosition
     , _optNumberOfNearestNeighbors :: Int
+    , _optOutFormat :: GenotypeFormatSpec
     , _optOutPath :: FilePath
     }
 
@@ -73,6 +75,7 @@ genOptParser :: OP.Parser GenOptions
 genOptParser = GenOptions <$> parseBasePaths
                           <*> parseSpatialTemporalPosition
                           <*> parseNumberOfNearestNeighbors
+                          <*> parseOutGenotypeFormat
                           <*> parseOutPath
 
 parseBasePaths :: OP.Parser [FilePath]
@@ -119,6 +122,19 @@ parseNumberOfNearestNeighbors = OP.option OP.auto (
     OP.showDefault
     )
 
+parseOutGenotypeFormat :: OP.Parser GenotypeFormatSpec
+parseOutGenotypeFormat = OP.option (OP.eitherReader readGenotypeFormat) (
+    OP.long "outFormat" <>
+    OP.help "the format of the output genotype data: EIGENSTRAT or PLINK" <>
+    OP.value GenotypeFormatPlink
+    )
+    where
+    readGenotypeFormat :: String -> Either String GenotypeFormatSpec
+    readGenotypeFormat s = case s of
+        "EIGENSTRAT" -> Right GenotypeFormatEigenstrat
+        "PLINK"      -> Right GenotypeFormatPlink
+        _            -> Left "must be EIGENSTRAT or PLINK"
+
 parseOutPath :: OP.Parser FilePath
 parseOutPath = OP.strOption (
     OP.long "outPath" <>
@@ -129,7 +145,7 @@ parseOutPath = OP.strOption (
 -- Actual program code
 
 runGen :: GenOptions -> IO ()
-runGen (GenOptions baseDirs poi numNeighbors outDir) = do
+runGen (GenOptions baseDirs poi numNeighbors outFormat outDir) = do
     -- load Poseidon packages -- 
     allPackages <- readPoseidonPackageCollection True True False baseDirs
     -- load janno tables
@@ -148,11 +164,17 @@ runGen (GenOptions baseDirs poi numNeighbors outDir) = do
     -- determine relevant packages
     relevantPackages <- filterPackagesByInds closestIndividuals allPackages
     closestIndices <- extractIndIndices closestIndividuals relevantPackages
+    -- compile genotype data structure
+    let [outInd, outSnp, outGeno] = case outFormat of 
+            GenotypeFormatEigenstrat -> ["poi.ind", "poi.snp", "poi.geno"]
+            GenotypeFormatPlink -> ["poi.fam", "poi.bim", "poi.bed"]
     -- compile genotype data
     runSafeT $ do
         (eigenstratIndEntries, eigenstratProd) <- getJointGenotypeData False False relevantPackages
-        let [outG, outS, outI] = map (outDir </>) ["poi.geno", "poi.snp", "poi.ind"]
-        let outConsumer = writeEigenstrat outG outS outI [EigenstratIndEntry "poi" Unknown "group_of_poi"]
+        let [outG, outS, outI] = map (outDir </>) [outGeno, outSnp, outInd]
+        let outConsumer = case outFormat of
+                GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI [EigenstratIndEntry "poi" Unknown "group_of_poi"]
+                GenotypeFormatPlink -> writePlink outG outS outI [EigenstratIndEntry "poi" Unknown "group_of_poi"]
         runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.map (mergeIndividuals closestIndices closestWeights) >-> outConsumer
         liftIO $ hClearLine stderr
         liftIO $ hSetCursorColumn stderr 0
