@@ -29,32 +29,33 @@ import Pipes
 import           System.Console.ANSI        (hClearLine, hSetCursorColumn)
 import Data.Function (on)
 
-data TestOptions = TestOptions
-    { _inTest :: String
+-- CLI interface configuration
+
+data GenOptions = GenOptions {   
+      _optBaseDirs :: [FilePath]
+    , _optSpatioTemporalPosition :: SpatialTemporalPosition
+    , _optNumberOfNearestNeighbors :: Int
+    , _optOutPath :: FilePath
     }
 
-data Options = CmdTest TestOptions
+data Options = CmdGen GenOptions
 
 main :: IO ()
 main = do
     cmdOpts <- OP.customExecParser p optParserInfo
     runCmd cmdOpts
-    --catch (runCmd cmdOpts) handler
     where
         p = OP.prefs OP.showHelpOnEmpty
-        --handler :: PoseidonException -> IO ()
-        --handler e = do
-        --    hPutStrLn stderr $ renderPoseidonException e
-        --    exitFailure
 
 runCmd :: Options -> IO ()
 runCmd o = case o of
-    CmdTest opts -> runTest opts
+    CmdGen opts -> runGen opts
 
 optParserInfo :: OP.ParserInfo Options
 optParserInfo = OP.info (OP.helper <*> versionOption <*> optParser) (
     OP.briefDesc <>
-    OP.progDesc "paagen"
+    OP.progDesc "paagen generates artificial genotype profiles for spatiotemporal positions \
+                \based on input data in the Poseidon format."
     )
 
 versionOption :: OP.Parser (a -> a)
@@ -62,39 +63,84 @@ versionOption = OP.infoOption (showVersion version) (OP.long "version" <> OP.hel
 
 optParser :: OP.Parser Options
 optParser = OP.subparser (
-        OP.command "test" testOptInfo <>
-        OP.commandGroup "test:"
+        OP.command "gen" genOptInfo
     )
   where
-    testOptInfo = OP.info (OP.helper <*> (CmdTest <$> testOptParser))
-        (OP.progDesc "test")
+    genOptInfo = OP.info (OP.helper <*> (CmdGen <$> genOptParser))
+        (OP.progDesc "a first generator algorithm")
 
-testOptParser :: OP.Parser TestOptions
-testOptParser = TestOptions <$> parseTest
+genOptParser :: OP.Parser GenOptions
+genOptParser = GenOptions <$> parseBasePaths
+                          <*> parseSpatialTemporalPosition
+                          <*> parseNumberOfNearestNeighbors
+                          <*> parseOutPath
 
-parseTest :: OP.Parser String 
-parseTest = OP.strOption (
-    OP.long "test" <> 
-    OP.help "test" <>
-    OP.value "test" <>
+parseBasePaths :: OP.Parser [FilePath]
+parseBasePaths = OP.some (OP.strOption (
+    OP.long "baseDir" <>
+    OP.short 'd' <>
+    OP.metavar "DIR" <>
+    OP.help "a base directory to search for Poseidon Packages (could be a Poseidon repository)"
+    ))
+
+parseSpatialTemporalPosition :: OP.Parser SpatialTemporalPosition
+parseSpatialTemporalPosition = SpatialTemporalPosition <$> timeParser <*> latParser <*> lonParser
+    where
+        timeParser = OP.option OP.auto (
+            OP.long "time" <>
+            OP.help "temporal position of point of interest: time in calBC/AD, so 3245BC would be -3245 and 1148AD just 1148"
+            )
+        latParser = OP.option (OP.eitherReader readLatitude) (
+            OP.long "latitude" <>
+            OP.help "spatial position of point of interest: latitude in decimal degrees"
+            )
+        readLatitude :: String -> Either String Latitude
+        readLatitude s = 
+            let val = read s :: Double
+            in  if val < -90 || val > 90
+                then Left "Latitude not in -90 to 90 degrees"
+                else Right $ Latitude val
+        lonParser = OP.option (OP.eitherReader readLongitude) (
+            OP.long "longitude" <>
+            OP.help "spatial position of point of interest: longitude in decimal degrees"
+            )
+        readLongitude :: String -> Either String Longitude
+        readLongitude s = 
+            let val = read s :: Double
+            in  if val < -180 || val > 180
+                then Left "Longitude not in -180 to 180 degrees"
+                else Right $ Longitude val
+
+parseNumberOfNearestNeighbors :: OP.Parser Int
+parseNumberOfNearestNeighbors = OP.option OP.auto (
+    OP.long "neighbors" <> 
+    OP.help "Number of nearest neighbors to consider for the calculation" <>
+    OP.value 50 <>
     OP.showDefault
+    )
+
+parseOutPath :: OP.Parser FilePath
+parseOutPath = OP.strOption (
+    OP.long "outPath" <>
+    OP.short 'o' <>
+    OP.help "the output directory path"
     )
 
 -- Actual program code
 
-runTest :: TestOptions -> IO ()
-runTest (TestOptions test) = do
+runGen :: GenOptions -> IO ()
+runGen (GenOptions baseDirs poi numNeighbors outDir) = do
     -- load Poseidon packages -- 
-    allPackages <- readPoseidonPackageCollection True True False ["/home/clemens/test/fetchtest/already_ready"]
+    allPackages <- readPoseidonPackageCollection True True False baseDirs
     -- load janno tables
     let jannos = concatMap posPacJanno allPackages
     -- transform to spatiotemporal positions
         stInds = jannoToSpaceTimePos jannos
     -- calculate distances
-        positionOfInterest = IndsWithPosition "poi" $ SpatialTemporalPosition 1000 (Latitude 47.82) (Longitude 47.82)
+        positionOfInterest = IndsWithPosition "poi" poi
         distancesToPoi = distanceOneToAll positionOfInterest stInds
     -- get X closest inds
-        closest = getClosestInds 50 distancesToPoi
+        closest = getClosestInds numNeighbors distancesToPoi
         closestIndividuals = map fst closest
         closestDistances = map snd closest
         closestWeights = distToWeight closestDistances
@@ -105,7 +151,7 @@ runTest (TestOptions test) = do
     -- compile genotype data
     runSafeT $ do
         (eigenstratIndEntries, eigenstratProd) <- getJointGenotypeData False False relevantPackages
-        let [outG, outS, outI] = map ("/home/clemens/test/paagentest" </>) ["huhu.geno", "huhu.snp", "huhu.ind"]
+        let [outG, outS, outI] = map (outDir </>) ["poi.geno", "poi.snp", "poi.ind"]
         let outConsumer = writeEigenstrat outG outS outI [EigenstratIndEntry "poi" Unknown "group_of_poi"]
         runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.map (mergeIndividuals closestIndices closestWeights) >-> outConsumer
         liftIO $ hClearLine stderr
