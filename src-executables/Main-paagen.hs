@@ -226,11 +226,11 @@ instance Ord GenoEntry where
     compare _ _            = EQ
 
 jannoToSpaceTimePos :: [JannoRow] -> [IndsWithPosition]
-jannoToSpaceTimePos jannos = 
-    let filterPos x = isJust (jDateBCADMedian x) && isJust (jLatitude x) && isJust (jLongitude x)
+jannoToSpaceTimePos jannos =
+    let filterPos x = (isJust (jDateBCADMedian x) || jDateType x == Just Modern) && isJust (jLatitude x) && isJust (jLongitude x)
         transformTo x = IndsWithPosition (jIndividualID x) $
             SpatialTemporalPosition 
-                (fromMaybe 0 (jDateBCADMedian x)) 
+                (fromMaybe 2000 (jDateBCADMedian x)) -- If empty then modern (after filter), which is approx. 2000AD
                 (fromMaybe (Latitude 0) (jLatitude x))
                 (fromMaybe (Longitude 0) (jLongitude x))
     in  map transformTo $ filter filterPos jannos
