@@ -16,7 +16,7 @@ executable paagen
     main-is:            Main-paagen.hs
     hs-source-dirs:     src-executables
     build-depends:      base, optparse-applicative, poseidon-hs, filepath, vector, sequence-formats, 
-                        pipes-safe, pipes, ansi-terminal
+                        pipes-safe, pipes, ansi-terminal, MonadRandom
     other-modules:      Paths_paagen
     default-language:   Haskell2010
 

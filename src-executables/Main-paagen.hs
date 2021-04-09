@@ -5,8 +5,9 @@ import           Paths_paagen                   (version)
 import           Control.Applicative            ((<|>))
 import           Control.Exception              (catch)
 import           Control.Monad                  (forM)
+import           Control.Monad.Random           (fromList, RandomGen, evalRand, mkStdGen, newStdGen, Random (randomR), getStdGen)
 import           Data.Function                  (on)
-import           Data.List                      (nub, tails, sortBy, intersect, maximumBy, group, sort, intercalate, elemIndex, elemIndices)
+import           Data.List                      (nub, tails, sortBy, intersect, maximumBy, group, sort, intercalate, elemIndex, elemIndices, unfoldr)
 import           Data.Maybe                     (isJust, fromMaybe, catMaybes, fromJust)
 import qualified Data.Vector                    as V
 import           Data.Version                   (showVersion)
@@ -24,7 +25,7 @@ import           SequenceFormats.Plink          (writePlink)
 import           System.Console.ANSI            (hClearLine, hSetCursorColumn)
 import           System.Exit                    (exitFailure)
 import           System.FilePath                ((<.>), (</>))
-import           System.IO                      (hPutStrLn, stderr)
+import           System.IO                      (hPutStrLn, stderr, hPutStr)
 
 -- CLI interface configuration
 
@@ -171,27 +172,29 @@ runGen (GenOptions baseDirs poi numNeighbors outFormat outDir) = do
         let outConsumer = case outFormat of
                 GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI [EigenstratIndEntry "poi" Unknown "group_of_poi"]
                 GenotypeFormatPlink -> writePlink outG outS outI [EigenstratIndEntry "poi" Unknown "group_of_poi"]
-        runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.map (mergeIndividuals closestIndices closestWeights) >-> outConsumer
+        runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (mergeIndividuals closestIndices closestWeights) >-> outConsumer
         liftIO $ hClearLine stderr
         liftIO $ hSetCursorColumn stderr 0
         liftIO $ hPutStrLn stderr "SNPs processed: All done"
 
-mergeIndividuals :: [Int] -> [Int] -> (EigenstratSnpEntry, GenoLine) -> (EigenstratSnpEntry, GenoLine)
-mergeIndividuals individualIndices weights (snpEntry, genoLine) = 
+mergeIndividuals :: [Int] -> [Rational] -> (EigenstratSnpEntry, GenoLine) -> SafeT IO (EigenstratSnpEntry, GenoLine)
+mergeIndividuals individualIndices weights (snpEntry, genoLine) = do
     let relevantGenoEntries = [genoLine V.! i | i <- individualIndices]
-        -- only keep Missing if there is no other option
-        genoEntriesWithoutMissingIfOthersAvailable = 
-            if nub relevantGenoEntries == [Missing]
-            then relevantGenoEntries
-            else filter (/= Missing) relevantGenoEntries
         -- count occurrence of GenoEntries
-        genoEntryIndices = getGenoIndices genoEntriesWithoutMissingIfOthersAvailable
+        genoEntryIndices = getGenoIndices relevantGenoEntries
         -- sum distance-based weight for each GenoEntry
         weightsPerGenoEntry = sumWeights genoEntryIndices weights
-        -- modeGenoEntry = mostCommon relevantGenoEntries
-        -- select GenoEntry with highest weight sum
-        selectedGenoEntry = fst $ maximumBy (\ (_, a) (_, b) -> compare a b) weightsPerGenoEntry
-    in (snpEntry, V.fromList [selectedGenoEntry])
+    -- sample GenoEntry based on weight
+    gen <- liftIO getStdGen
+    -- liftIO $ hPutStrLn stderr (show gen)
+    let selectedGenoEntry = sampleWeightedList gen weightsPerGenoEntry
+    liftIO newStdGen
+    -- return 
+    return (snpEntry, V.singleton selectedGenoEntry)
+
+sampleWeightedList :: RandomGen g => g -> [(a, Rational)] -> a
+sampleWeightedList gen weights = head $ evalRand m gen
+    where m = sequence . repeat . fromList $ weights
 
 getGenoIndices :: Eq a => [a] -> [(a, [Int])]
 getGenoIndices xs = 
@@ -199,14 +202,11 @@ getGenoIndices xs =
         indices = map (\v -> elemIndices v xs) unique
     in  zip unique indices
 
-sumWeights :: [(a, [Int])] -> [Int] -> [(a, Int)]
+sumWeights :: Num b => [(a, [Int])] -> [b] -> [(a, b)]
 sumWeights xs weights = map (\(x, ys) -> (x, sum $ subset ys weights)) xs
     where
         subset :: [Int] -> [a] -> [a]
         subset indices xs = [xs !! i | i <- indices]
-
--- mostCommon :: Ord a => [a] -> a
--- mostCommon = head . maximumBy (compare `on` length) . group . sort
 
 data IndsWithPosition = IndsWithPosition {
       ind :: String
@@ -264,18 +264,19 @@ haversineDist (lat1, lon1) (lat2, lon2) =
 getClosestInds :: Int -> [(String, String, Double)] -> [(String, Double)]
 getClosestInds n dists = map (\(_,x,y) -> (x,y)) $ take n $ sortBy (\(_,_,x) (_,_,y) -> compare x y) dists
 
-distToWeight :: [Double] -> [Int]
+distToWeight :: [Double] -> [Rational]
 distToWeight distances = 
     let closeness = map (1/) distances
-    in map round $ rescale 0 100 closeness
+    in rescale 0 100 closeness
 
-rescale :: Double -> Double -> [Double] -> [Double]
+rescale :: Double -> Double -> [Double] -> [Rational]
 rescale minNew maxNew xs = 
     let minOld = minimum xs
         maxOld = maximum xs
         a = (maxNew - minNew) / (maxOld - minOld)
         bs = map (\x -> x - maxOld) xs
-    in map (\x -> a * x + maxNew) bs
+        res = map (\x -> a * x + maxNew) bs
+    in map toRational res
 
 filterPackagesByInds :: [String] -> [PoseidonPackage] -> IO [PoseidonPackage]
 filterPackagesByInds indNamesStats packages = do
