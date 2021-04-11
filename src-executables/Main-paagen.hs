@@ -105,8 +105,9 @@ parseSpatialTemporalPositionsFromFile :: OP.Parser (Maybe FilePath)
 parseSpatialTemporalPositionsFromFile = OP.option (Just <$> OP.str) (OP.long "positionFile" <>
     OP.value Nothing <>
     OP.help "A file with a list of spatiotemporal positions. \
-    \Works just as -p, but multiple values can also be separated by newline, not just by ;. \
-    \-p and --positionFile can be combined.")
+            \Works just as -p, but multiple values can also be separated by newline, not just by ;. \
+            \-p and --positionFile can be combined."
+    )
 
 spatialTemporalPositionsParser :: P.Parser [SpatialTemporalPosition]
 spatialTemporalPositionsParser = P.try (P.sepBy parseSpatialTemporalPosition (P.char ';' <* P.spaces))
@@ -185,26 +186,31 @@ parseOutPath = OP.strOption (
 -- Actual program code
 
 runGen :: GenOptions -> IO ()
-runGen (GenOptions baseDirs pois poisFile numNeighbors outFormat outDir) = do
-    let poi = head pois
-    -- load Poseidon packages -- 
+runGen (GenOptions baseDirs poisDirect poisFile numNeighbors outFormat outDir) = do
+    -- compile entities
+    poisFromFile <- case poisFile of
+        Nothing -> return []
+        Just f -> readSpatialTemporalPositionsFromFile f
+    let pois = poisDirect ++ poisFromFile --this nub could also be relevant for forge
+    -- load Poseidon packages
     allPackages <- readPoseidonPackageCollection True True False baseDirs
     -- load janno tables
     let jannos = concatMap posPacJanno allPackages
     -- transform to spatiotemporal positions
         stInds = jannoToSpaceTimePos jannos
     -- calculate distances
-        positionOfInterest = IndsWithPosition "poi" poi
-        distancesToPoi = distanceOneToAll positionOfInterest stInds
+        poisNames = map (\x -> "poi" ++ show x) $ take (length pois) [1,2..]
+        positionsOfInterest = zipWith IndsWithPosition poisNames pois
+        distancesToPois = map (`distanceOneToAll` stInds) positionsOfInterest 
     -- get X closest inds
-        closest = getClosestInds numNeighbors distancesToPoi
-        closestIndividuals = map fst closest
-        closestDistances = map snd closest
-        closestWeights = distToWeight closestDistances
-    putStrLn $ "Closest individuals: " ++ intercalate ", " closestIndividuals
+        closest = map (getClosestInds numNeighbors) distancesToPois
+        closestIndividuals = map (map fst) closest
+        closestDistances = map (map snd) closest
+        closestWeights = map distToWeight closestDistances
+    -- putStrLn $ "Closest individuals: " ++ intercalate ", " closestIndividuals
     -- determine relevant packages
-    relevantPackages <- filterPackagesByInds closestIndividuals allPackages
-    closestIndices <- extractIndIndices closestIndividuals relevantPackages
+    relevantPackages <- filterPackagesByInds (nub $ concat closestIndividuals) allPackages
+    closestIndices <- mapM (`extractIndIndices` relevantPackages) closestIndividuals 
     -- compile genotype data structure
     let [outInd, outSnp, outGeno] = case outFormat of 
             GenotypeFormatEigenstrat -> ["poi.ind", "poi.snp", "poi.geno"]
