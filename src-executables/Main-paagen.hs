@@ -210,7 +210,9 @@ runGen (GenOptions baseDirs poisDirect poisFile numNeighbors outFormat outDir) =
     -- putStrLn $ "Closest individuals: " ++ intercalate ", " closestIndividuals
     -- determine relevant packages
     relevantPackages <- filterPackagesByInds (nub $ concat closestIndividuals) allPackages
-    closestIndices <- mapM (`extractIndIndices` relevantPackages) closestIndividuals 
+    closestIndices <- mapM (`extractIndIndices` relevantPackages) closestIndividuals
+    -- merge poi indices and weights
+    let infoForIndividualPOIs = zip closestIndices closestWeights
     -- compile genotype data structure
     let [outInd, outSnp, outGeno] = case outFormat of 
             GenotypeFormatEigenstrat -> ["poi.ind", "poi.snp", "poi.geno"]
@@ -222,13 +224,20 @@ runGen (GenOptions baseDirs poisDirect poisFile numNeighbors outFormat outDir) =
         let outConsumer = case outFormat of
                 GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI [EigenstratIndEntry "poi" Unknown "group_of_poi"]
                 GenotypeFormatPlink -> writePlink outG outS outI [EigenstratIndEntry "poi" Unknown "group_of_poi"]
-        runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (mergeIndividuals closestIndices closestWeights) >-> outConsumer
+        runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (sampleGenoForMultiplePOIs infoForIndividualPOIs) >-> outConsumer
         liftIO $ hClearLine stderr
         liftIO $ hSetCursorColumn stderr 0
         liftIO $ hPutStrLn stderr "SNPs processed: All done"
 
-mergeIndividuals :: [Int] -> [Rational] -> (EigenstratSnpEntry, GenoLine) -> SafeT IO (EigenstratSnpEntry, GenoLine)
-mergeIndividuals individualIndices weights (snpEntry, genoLine) = do
+sampleGenoForMultiplePOIs :: [([Int], [Rational])] -> (EigenstratSnpEntry, GenoLine) -> SafeT IO (EigenstratSnpEntry, GenoLine)
+sampleGenoForMultiplePOIs infoForIndividualPOIs (snpEntry, genoLine) = do
+    entries <- mapM (\(x,y) -> sampleGenoForOnePOI x y genoLine) infoForIndividualPOIs
+    -- return 
+    return (snpEntry, V.fromList entries)
+
+
+sampleGenoForOnePOI :: [Int] -> [Rational] -> GenoLine -> SafeT IO GenoEntry
+sampleGenoForOnePOI individualIndices weights genoLine = do
     let relevantGenoEntries = [genoLine V.! i | i <- individualIndices]
         -- count occurrence of GenoEntries
         genoEntryIndices = getGenoIndices relevantGenoEntries
@@ -240,7 +249,7 @@ mergeIndividuals individualIndices weights (snpEntry, genoLine) = do
     let selectedGenoEntry = sampleWeightedList gen weightsPerGenoEntry
     liftIO newStdGen
     -- return 
-    return (snpEntry, V.singleton selectedGenoEntry)
+    return selectedGenoEntry
 
 sampleWeightedList :: RandomGen g => g -> [(a, Rational)] -> a
 sampleWeightedList gen weights = head $ evalRand m gen
