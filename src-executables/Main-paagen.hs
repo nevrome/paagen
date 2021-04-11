@@ -3,7 +3,7 @@
 import           Paths_paagen                   (version)
 
 import           Control.Applicative            ((<|>))
-import           Control.Exception              (catch)
+import           Control.Exception              (catch, throwIO, Exception)
 import           Control.Monad                  (forM, guard)
 import           Control.Monad.Random           (fromList, RandomGen, evalRand, newStdGen, getStdGen)
 import           Data.Char                      (isSpace)
@@ -30,12 +30,14 @@ import           System.IO                      (hPutStrLn, stderr, hPutStr)
 import qualified Text.Parsec                    as P
 import qualified Text.Parsec.String             as P
 import qualified Text.Parsec.Number             as P
+import Control.Exception (SomeException(SomeException))
 
 -- CLI interface configuration
 
 data GenOptions = GenOptions {   
       _optBaseDirs :: [FilePath]
     , _optSpatioTemporalPositions :: [SpatialTemporalPosition]
+    , _optSpatioTemporalPositionsFile :: Maybe FilePath
     , _optNumberOfNearestNeighbors :: Int
     , _optOutFormat :: GenotypeFormatSpec
     , _optOutPath :: FilePath
@@ -75,6 +77,7 @@ optParser = OP.subparser (
 genOptParser :: OP.Parser GenOptions
 genOptParser = GenOptions <$> parseBasePaths
                           <*> parseSpatialTemporalPositionsDirect
+                          <*> parseSpatialTemporalPositionsFromFile
                           <*> parseNumberOfNearestNeighbors
                           <*> parseOutGenotypeFormat
                           <*> parseOutPath
@@ -84,7 +87,7 @@ parseBasePaths = OP.some (OP.strOption (
     OP.long "baseDir" <>
     OP.short 'd' <>
     OP.metavar "DIR" <>
-    OP.help "a base directory to search for Poseidon Packages (could be a Poseidon repository)"
+    OP.help "A base directory to search for Poseidon Packages (could be a Poseidon repository)"
     ))
 
 parseSpatialTemporalPositionsDirect :: OP.Parser [SpatialTemporalPosition]
@@ -92,16 +95,18 @@ parseSpatialTemporalPositionsDirect = OP.option (OP.eitherReader readSpatialTemp
     OP.long "positionString" <>
     OP.short 'p' <>
     OP.value [] <>
-    OP.help "spatiotemporal positions of interest: each position is a string of the form \
+    OP.help "Spatiotemporal positions of interest: each position is a string of the form \
             \\"time,latitude,longitude\". Multiple positions can be listed separated by ;. \
             \Latitude and longitude must be given in decimal degrees, \
             \time in calBC/AD, so 3245BC would be -3245 and 1148AD just 1148"
     )
 
-readSpatialTemporalPositionsString :: String -> Either String [SpatialTemporalPosition]
-readSpatialTemporalPositionsString s = case P.runParser spatialTemporalPositionsParser () "" s of
-    Left p  -> Left (show p)
-    Right x -> Right x
+parseSpatialTemporalPositionsFromFile :: OP.Parser (Maybe FilePath)
+parseSpatialTemporalPositionsFromFile = OP.option (Just <$> OP.str) (OP.long "positionFile" <>
+    OP.value Nothing <>
+    OP.help "A file with a list of spatiotemporal positions. \
+    \Works just as -p, but multiple values can also be separated by newline, not just by ;. \
+    \-p and --positionFile can be combined.")
 
 spatialTemporalPositionsParser :: P.Parser [SpatialTemporalPosition]
 spatialTemporalPositionsParser = P.try (P.sepBy parseSpatialTemporalPosition (P.char ';' <* P.spaces))
@@ -121,14 +126,33 @@ pInt = read <$> P.many1 P.digit
 pLat :: P.Parser Latitude 
 pLat = do
     lat <- P.floating2 True
-    guard (lat >= -90 && lat <= 90) P.<?> "valid latitude (-90° to 90°)"
+    guard (lat >= -90 && lat <= 90) P.<?> "valid latitude (-90 to 90)"
     return (Latitude lat)
 
 pLon :: P.Parser Longitude
 pLon = do
     lon <- P.floating2 True
-    guard (lon >= -180 && lon <= 180) P.<?> "valid longitude (-180° to 180°)"
+    guard (lon >= -180 && lon <= 180) P.<?> "valid longitude (-180 to 180)"
     return (Longitude lon)
+
+readSpatialTemporalPositionsString :: String -> Either String [SpatialTemporalPosition]
+readSpatialTemporalPositionsString s = case P.runParser spatialTemporalPositionsParser () "" s of
+    Left p  -> Left (show p)
+    Right x -> Right x
+
+readSpatialTemporalPositionsFromFile :: FilePath -> IO [SpatialTemporalPosition]
+readSpatialTemporalPositionsFromFile positionFile = do
+    let multiPositionParser = spatialTemporalPositionsParser `P.sepBy1` (P.newline *> P.spaces)
+    eitherParseResult <- P.parseFromFile (P.spaces *> multiPositionParser <* P.spaces) positionFile
+    case eitherParseResult of
+        Left err -> throwIO $ PaagenCLIParsingException (show err)
+        Right r -> return (concat r)
+
+data PaagenException =
+    PaagenCLIParsingException String
+    deriving (Show)
+
+instance Exception PaagenException
 
 parseNumberOfNearestNeighbors :: OP.Parser Int
 parseNumberOfNearestNeighbors = OP.option OP.auto (
@@ -141,7 +165,7 @@ parseNumberOfNearestNeighbors = OP.option OP.auto (
 parseOutGenotypeFormat :: OP.Parser GenotypeFormatSpec
 parseOutGenotypeFormat = OP.option (OP.eitherReader readGenotypeFormat) (
     OP.long "outFormat" <>
-    OP.help "the format of the output genotype data: EIGENSTRAT or PLINK" <>
+    OP.help "The format of the output genotype data: EIGENSTRAT or PLINK" <>
     OP.value GenotypeFormatPlink
     )
     where
@@ -155,13 +179,13 @@ parseOutPath :: OP.Parser FilePath
 parseOutPath = OP.strOption (
     OP.long "outPath" <>
     OP.short 'o' <>
-    OP.help "the output directory path"
+    OP.help "The output directory path"
     )
 
 -- Actual program code
 
 runGen :: GenOptions -> IO ()
-runGen (GenOptions baseDirs pois numNeighbors outFormat outDir) = do
+runGen (GenOptions baseDirs pois poisFile numNeighbors outFormat outDir) = do
     let poi = head pois
     -- load Poseidon packages -- 
     allPackages <- readPoseidonPackageCollection True True False baseDirs
