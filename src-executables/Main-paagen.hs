@@ -32,9 +32,32 @@ import qualified Text.Parsec.String             as P
 import qualified Text.Parsec.Number             as P
 import Control.Exception (SomeException(SomeException))
 
--- CLI interface configuration
+-- data types
 
-data GenOptions = GenOptions {   
+data IndsWithPosition = IndsWithPosition {
+      ind :: String
+    , pos :: SpatialTemporalPosition
+} deriving (Show)
+
+data SpatialTemporalPosition = SpatialTemporalPosition {
+      time :: Int
+    , lat :: Latitude 
+    , lon :: Longitude
+} deriving (Show)
+
+instance Ord GenoEntry where
+    compare HomRef Het     = GT
+    compare Het HomAlt     = GT
+    compare HomAlt Missing = GT
+    compare _ _            = EQ
+
+data PaagenException =
+    PaagenCLIParsingException String
+    deriving (Show)
+
+instance Exception PaagenException
+
+data SpaceTimeOptions = SpaceTimeOptions {   
       _optBaseDirs :: [FilePath]
     , _optSpatioTemporalPositions :: [SpatialTemporalPosition]
     , _optSpatioTemporalPositionsFile :: Maybe FilePath
@@ -43,7 +66,9 @@ data GenOptions = GenOptions {
     , _optOutPath :: FilePath
     }
 
-data Options = CmdGen GenOptions
+data Options = CmdSpaceTime SpaceTimeOptions
+
+-- CLI interface configuration
 
 main :: IO ()
 main = do
@@ -54,12 +79,12 @@ main = do
 
 runCmd :: Options -> IO ()
 runCmd o = case o of
-    CmdGen opts -> runGen opts
+    CmdSpaceTime opts -> runSpaceTime opts
 
 optParserInfo :: OP.ParserInfo Options
 optParserInfo = OP.info (OP.helper <*> versionOption <*> optParser) (
     OP.briefDesc <>
-    OP.progDesc "paagen generates artificial genotype profiles for spatiotemporal positions \
+    OP.progDesc "paagen generates artificial genotype profiles \
                 \based on input data in the Poseidon format."
     )
 
@@ -68,19 +93,19 @@ versionOption = OP.infoOption (showVersion version) (OP.long "version" <> OP.hel
 
 optParser :: OP.Parser Options
 optParser = OP.subparser (
-        OP.command "gen" genOptInfo
+        OP.command "spacetime" spaceTimeOptInfo
     )
   where
-    genOptInfo = OP.info (OP.helper <*> (CmdGen <$> genOptParser))
-        (OP.progDesc "a first generator algorithm")
+    spaceTimeOptInfo = OP.info (OP.helper <*> (CmdSpaceTime <$> spaceTimeOptParser))
+        (OP.progDesc "Genotype profile generation based on spatiotemporal position")
 
-genOptParser :: OP.Parser GenOptions
-genOptParser = GenOptions <$> parseBasePaths
-                          <*> parseSpatialTemporalPositionsDirect
-                          <*> parseSpatialTemporalPositionsFromFile
-                          <*> parseNumberOfNearestNeighbors
-                          <*> parseOutGenotypeFormat
-                          <*> parseOutPath
+spaceTimeOptParser :: OP.Parser SpaceTimeOptions
+spaceTimeOptParser = SpaceTimeOptions <$> parseBasePaths
+                                      <*> parseSpatialTemporalPositionsDirect
+                                      <*> parseSpatialTemporalPositionsFromFile
+                                      <*> parseNumberOfNearestNeighbors
+                                      <*> parseOutGenotypeFormat
+                                      <*> parseOutPath
 
 parseBasePaths :: OP.Parser [FilePath]
 parseBasePaths = OP.some (OP.strOption (
@@ -149,12 +174,6 @@ readSpatialTemporalPositionsFromFile positionFile = do
         Left err -> throwIO $ PaagenCLIParsingException (show err)
         Right r -> return (concat r)
 
-data PaagenException =
-    PaagenCLIParsingException String
-    deriving (Show)
-
-instance Exception PaagenException
-
 parseNumberOfNearestNeighbors :: OP.Parser Int
 parseNumberOfNearestNeighbors = OP.option OP.auto (
     OP.long "neighbors" <> 
@@ -185,8 +204,8 @@ parseOutPath = OP.strOption (
 
 -- Actual program code
 
-runGen :: GenOptions -> IO ()
-runGen (GenOptions baseDirs poisDirect poisFile numNeighbors outFormat outDir) = do
+runSpaceTime :: SpaceTimeOptions -> IO ()
+runSpaceTime (SpaceTimeOptions baseDirs poisDirect poisFile numNeighbors outFormat outDir) = do
     -- compile entities
     poisFromFile <- case poisFile of
         Nothing -> return []
@@ -232,9 +251,7 @@ runGen (GenOptions baseDirs poisDirect poisFile numNeighbors outFormat outDir) =
 sampleGenoForMultiplePOIs :: [([Int], [Rational])] -> (EigenstratSnpEntry, GenoLine) -> SafeT IO (EigenstratSnpEntry, GenoLine)
 sampleGenoForMultiplePOIs infoForIndividualPOIs (snpEntry, genoLine) = do
     entries <- mapM (\(x,y) -> sampleGenoForOnePOI x y genoLine) infoForIndividualPOIs
-    -- return 
     return (snpEntry, V.fromList entries)
-
 
 sampleGenoForOnePOI :: [Int] -> [Rational] -> GenoLine -> SafeT IO GenoEntry
 sampleGenoForOnePOI individualIndices weights genoLine = do
@@ -266,23 +283,6 @@ sumWeights xs weights = map (\(x, ys) -> (x, sum $ subset ys weights)) xs
     where
         subset :: [Int] -> [a] -> [a]
         subset indices xs = [xs !! i | i <- indices]
-
-data IndsWithPosition = IndsWithPosition {
-      ind :: String
-    , pos :: SpatialTemporalPosition
-} deriving (Show)
-
-data SpatialTemporalPosition = SpatialTemporalPosition {
-      time :: Int
-    , lat :: Latitude 
-    , lon :: Longitude
-} deriving (Show)
-
-instance Ord GenoEntry where
-    compare HomRef Het     = GT
-    compare Het HomAlt     = GT
-    compare HomAlt Missing = GT
-    compare _ _            = EQ
 
 jannoToSpaceTimePos :: [JannoRow] -> [IndsWithPosition]
 jannoToSpaceTimePos jannos =
