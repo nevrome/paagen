@@ -21,3 +21,4 @@ extra-deps:
 - skylighting-0.8.5
 - skylighting-core-0.8.5
 - pipes-ordered-zip-1.2.1
+- parsec3-numbers-0.1.0
