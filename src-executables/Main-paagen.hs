@@ -241,7 +241,7 @@ runSpaceTime (SpaceTimeOptions baseDirs poisDirect poisFile numNeighbors outForm
         (eigenstratIndEntries, eigenstratProd) <- getJointGenotypeData False False relevantPackages
         let [outG, outS, outI] = map (outDir </>) [outGeno, outSnp, outInd]
         let outConsumer = case outFormat of
-                GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI [EigenstratIndEntry "poi" Unknown "group_of_poi"]
+                GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI $ map (\x -> EigenstratIndEntry x Unknown "group_of_poi") poisNames
                 GenotypeFormatPlink -> writePlink outG outS outI [EigenstratIndEntry "poi" Unknown "group_of_poi"]
         runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (sampleGenoForMultiplePOIs infoForIndividualPOIs) >-> outConsumer
         liftIO $ hClearLine stderr
