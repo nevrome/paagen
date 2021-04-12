@@ -34,8 +34,9 @@ import Control.Exception (SomeException(SomeException))
 
 -- data types
 
-data IndsWithPosition = IndsWithPosition {
+data IndWithPosition = IndWithPosition {
       ind :: String
+    , unit :: String
     , pos :: SpatialTemporalPosition
 } deriving (Show)
 
@@ -59,8 +60,8 @@ instance Exception PaagenException
 
 data SpaceTimeOptions = SpaceTimeOptions {   
       _optBaseDirs :: [FilePath]
-    , _optSpatioTemporalPositions :: [SpatialTemporalPosition]
-    , _optSpatioTemporalPositionsFile :: Maybe FilePath
+    , _optIndWithPosition :: [IndWithPosition]
+    , _optIndWithPositionFile :: Maybe FilePath
     , _optNumberOfNearestNeighbors :: Int
     , _optOutFormat :: GenotypeFormatSpec
     , _optOutPath :: FilePath
@@ -101,8 +102,8 @@ optParser = OP.subparser (
 
 spaceTimeOptParser :: OP.Parser SpaceTimeOptions
 spaceTimeOptParser = SpaceTimeOptions <$> parseBasePaths
-                                      <*> parseSpatialTemporalPositionsDirect
-                                      <*> parseSpatialTemporalPositionsFromFile
+                                      <*> parseIndWithPositionDirect
+                                      <*> parseIndWithPositionFromFile
                                       <*> parseNumberOfNearestNeighbors
                                       <*> parseOutGenotypeFormat
                                       <*> parseOutPath
@@ -115,27 +116,52 @@ parseBasePaths = OP.some (OP.strOption (
     OP.help "A base directory to search for Poseidon Packages (could be a Poseidon repository)"
     ))
 
-parseSpatialTemporalPositionsDirect :: OP.Parser [SpatialTemporalPosition]
-parseSpatialTemporalPositionsDirect = OP.option (OP.eitherReader readSpatialTemporalPositionsString) (
+parseIndWithPositionDirect :: OP.Parser [IndWithPosition]
+parseIndWithPositionDirect = OP.option (OP.eitherReader readIndWithPositionString) (
     OP.long "positionString" <>
     OP.short 'p' <>
     OP.value [] <>
     OP.help "Spatiotemporal positions of interest: each position is a string of the form \
-            \\"time,latitude,longitude\". Multiple positions can be listed separated by ;. \
-            \Latitude and longitude must be given in decimal degrees, \
-            \time in calBC/AD, so 3245BC would be -3245 and 1148AD just 1148"
+            \\"[id:group](time,latitude,longitude)\". Multiple positions can be listed separated by ;. \
+            \id and group are simple strings, latitude and longitude must be given in decimal degrees \
+            \and time in calBC/AD, so 3245BC would be -3245 and 1148AD just 1148"
     )
 
-parseSpatialTemporalPositionsFromFile :: OP.Parser (Maybe FilePath)
-parseSpatialTemporalPositionsFromFile = OP.option (Just <$> OP.str) (OP.long "positionFile" <>
+parseIndWithPositionFromFile :: OP.Parser (Maybe FilePath)
+parseIndWithPositionFromFile = OP.option (Just <$> OP.str) (OP.long "positionFile" <>
     OP.value Nothing <>
     OP.help "A file with a list of spatiotemporal positions. \
             \Works just as -p, but multiple values can also be separated by newline, not just by ;. \
             \-p and --positionFile can be combined."
     )
 
-spatialTemporalPositionsParser :: P.Parser [SpatialTemporalPosition]
-spatialTemporalPositionsParser = P.try (P.sepBy parseSpatialTemporalPosition (P.char ';' <* P.spaces))
+readIndWithPositionString :: String -> Either String [IndWithPosition]
+readIndWithPositionString s = case P.runParser indWithPositionParser () "" s of
+    Left p  -> Left (show p)
+    Right x -> Right x
+
+readIndWithPositionFromFile :: FilePath -> IO [IndWithPosition]
+readIndWithPositionFromFile positionFile = do
+    let multiPositionParser = indWithPositionParser `P.sepBy1` (P.newline *> P.spaces)
+    eitherParseResult <- P.parseFromFile (P.spaces *> multiPositionParser <* P.spaces) positionFile
+    case eitherParseResult of
+        Left err -> throwIO $ PaagenCLIParsingException (show err)
+        Right r -> return (concat r)
+
+indWithPositionParser :: P.Parser [IndWithPosition]
+indWithPositionParser = P.try (P.sepBy parseIndWithPosition (P.char ';' <* P.spaces))
+
+parseIndWithPosition :: P.Parser IndWithPosition
+parseIndWithPosition = do
+    _ <- P.oneOf "["
+    ind <- P.manyTill P.anyChar (P.string ":")
+    _ <- P.oneOf ":"
+    unit <- P.manyTill P.anyChar (P.string "]")
+    _ <- P.oneOf "]"
+    _ <- P.oneOf "("
+    spatpos <- parseSpatialTemporalPosition
+    _ <- P.oneOf ")"
+    return (IndWithPosition ind unit spatpos)
 
 parseSpatialTemporalPosition :: P.Parser SpatialTemporalPosition
 parseSpatialTemporalPosition = do
@@ -160,19 +186,6 @@ pLon = do
     lon <- P.sign <*> P.floating2 True
     guard (lon >= -180 && lon <= 180) P.<?> "valid longitude (-180 to 180)"
     return (Longitude lon)
-
-readSpatialTemporalPositionsString :: String -> Either String [SpatialTemporalPosition]
-readSpatialTemporalPositionsString s = case P.runParser spatialTemporalPositionsParser () "" s of
-    Left p  -> Left (show p)
-    Right x -> Right x
-
-readSpatialTemporalPositionsFromFile :: FilePath -> IO [SpatialTemporalPosition]
-readSpatialTemporalPositionsFromFile positionFile = do
-    let multiPositionParser = spatialTemporalPositionsParser `P.sepBy1` (P.newline *> P.spaces)
-    eitherParseResult <- P.parseFromFile (P.spaces *> multiPositionParser <* P.spaces) positionFile
-    case eitherParseResult of
-        Left err -> throwIO $ PaagenCLIParsingException (show err)
-        Right r -> return (concat r)
 
 parseNumberOfNearestNeighbors :: OP.Parser Int
 parseNumberOfNearestNeighbors = OP.option OP.auto (
@@ -206,10 +219,10 @@ parseOutPath = OP.strOption (
 
 runSpaceTime :: SpaceTimeOptions -> IO ()
 runSpaceTime (SpaceTimeOptions baseDirs poisDirect poisFile numNeighbors outFormat outDir) = do
-    -- compile entities
+    -- compile pois
     poisFromFile <- case poisFile of
         Nothing -> return []
-        Just f -> readSpatialTemporalPositionsFromFile f
+        Just f -> readIndWithPositionFromFile f
     let pois = poisDirect ++ poisFromFile --this nub could also be relevant for forge
     -- load Poseidon packages
     allPackages <- readPoseidonPackageCollection True True False baseDirs
@@ -218,9 +231,7 @@ runSpaceTime (SpaceTimeOptions baseDirs poisDirect poisFile numNeighbors outForm
     -- transform to spatiotemporal positions
         stInds = jannoToSpaceTimePos jannos
     -- calculate distances
-        poisNames = map (\x -> "poi" ++ show x) $ take (length pois) [1,2..]
-        positionsOfInterest = zipWith IndsWithPosition poisNames pois
-        distancesToPois = map (`distanceOneToAll` stInds) positionsOfInterest 
+        distancesToPois = map (`distanceOneToAll` stInds) pois 
     -- get X closest inds
         closest = map (getClosestInds numNeighbors) distancesToPois
         closestIndividuals = map (map fst) closest
@@ -240,9 +251,10 @@ runSpaceTime (SpaceTimeOptions baseDirs poisDirect poisFile numNeighbors outForm
     runSafeT $ do
         (eigenstratIndEntries, eigenstratProd) <- getJointGenotypeData False False relevantPackages
         let [outG, outS, outI] = map (outDir </>) [outGeno, outSnp, outInd]
+            newIndEntries = map (\x -> EigenstratIndEntry (ind x) Unknown (unit x)) pois
         let outConsumer = case outFormat of
-                GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI $ map (\x -> EigenstratIndEntry x Unknown "group_of_poi") poisNames
-                GenotypeFormatPlink -> writePlink outG outS outI [EigenstratIndEntry "poi" Unknown "group_of_poi"]
+                GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI newIndEntries 
+                GenotypeFormatPlink      -> writePlink      outG outS outI newIndEntries
         runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (sampleGenoForMultiplePOIs infoForIndividualPOIs) >-> outConsumer
         liftIO $ hClearLine stderr
         liftIO $ hSetCursorColumn stderr 0
@@ -284,17 +296,17 @@ sumWeights xs weights = map (\(x, ys) -> (x, sum $ subset ys weights)) xs
         subset :: [Int] -> [a] -> [a]
         subset indices xs = [xs !! i | i <- indices]
 
-jannoToSpaceTimePos :: [JannoRow] -> [IndsWithPosition]
+jannoToSpaceTimePos :: [JannoRow] -> [IndWithPosition]
 jannoToSpaceTimePos jannos =
     let filterPos x = (isJust (jDateBCADMedian x) || jDateType x == Just Modern) && isJust (jLatitude x) && isJust (jLongitude x)
-        transformTo x = IndsWithPosition (jIndividualID x) $
+        transformTo x = IndWithPosition (jIndividualID x) (head $ jGroupName x) $
             SpatialTemporalPosition 
                 (fromMaybe 2000 (jDateBCADMedian x)) -- If empty then modern (after filter), which is approx. 2000AD
                 (fromMaybe (Latitude 0) (jLatitude x))
                 (fromMaybe (Longitude 0) (jLongitude x))
     in  map transformTo $ filter filterPos jannos
 
-distanceOneToAll :: IndsWithPosition -> [IndsWithPosition] -> [(String, String, Double)]
+distanceOneToAll :: IndWithPosition -> [IndWithPosition] -> [(String, String, Double)]
 distanceOneToAll poi = 
     map (distanceOneToOne poi) 
     where distanceOneToOne i1 i2 = (ind i1, ind i2, spatioTemporalDistance 1 (pos i1) (pos i2))
