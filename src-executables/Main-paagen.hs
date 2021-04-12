@@ -155,9 +155,7 @@ parseIndWithPosition :: P.Parser IndWithPosition
 parseIndWithPosition = do
     _ <- P.oneOf "["
     ind <- P.manyTill P.anyChar (P.string ":")
-    _ <- P.oneOf ":"
     unit <- P.manyTill P.anyChar (P.string "]")
-    _ <- P.oneOf "]"
     _ <- P.oneOf "("
     spatpos <- parseSpatialTemporalPosition
     _ <- P.oneOf ")"
