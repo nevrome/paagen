@@ -151,13 +151,13 @@ pInt = read <$> P.many1 P.digit
 
 pLat :: P.Parser Latitude 
 pLat = do
-    lat <- P.floating2 True
+    lat <- P.sign <*> P.floating2 True
     guard (lat >= -90 && lat <= 90) P.<?> "valid latitude (-90 to 90)"
     return (Latitude lat)
 
 pLon :: P.Parser Longitude
 pLon = do
-    lon <- P.floating2 True
+    lon <- P.sign <*> P.floating2 True
     guard (lon >= -180 && lon <= 180) P.<?> "valid longitude (-180 to 180)"
     return (Longitude lon)
 
