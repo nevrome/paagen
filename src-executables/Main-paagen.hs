@@ -265,9 +265,7 @@ runSpaceTime (SpaceTimeOptions baseDirs poisDirect poisFile numNeighbors tempora
                 GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI newIndEntries 
                 GenotypeFormatPlink      -> writePlink      outG outS outI newIndEntries
         runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (sampleGenoForMultiplePOIs infoForIndividualPOIs) >-> outConsumer
-        liftIO $ hClearLine stderr
-        liftIO $ hSetCursorColumn stderr 0
-        liftIO $ hPutStrLn stderr "SNPs processed: All done"
+        liftIO $ hPutStrLn stderr "Done"
 
 sampleGenoForMultiplePOIs :: [([Int], [Rational])] -> (EigenstratSnpEntry, GenoLine) -> SafeT IO (EigenstratSnpEntry, GenoLine)
 sampleGenoForMultiplePOIs infoForIndividualPOIs (snpEntry, genoLine) = do
