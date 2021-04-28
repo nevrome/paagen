@@ -63,6 +63,7 @@ data SpaceTimeOptions = SpaceTimeOptions {
     , _optIndWithPosition :: [IndWithPosition]
     , _optIndWithPositionFile :: Maybe FilePath
     , _optNumberOfNearestNeighbors :: Int
+    , _optTemporalDistanceScaling :: Double
     , _optOutFormat :: GenotypeFormatSpec
     , _optOutPath :: FilePath
     }
@@ -105,6 +106,7 @@ spaceTimeOptParser = SpaceTimeOptions <$> parseBasePaths
                                       <*> parseIndWithPositionDirect
                                       <*> parseIndWithPositionFromFile
                                       <*> parseNumberOfNearestNeighbors
+                                      <*> parseTemporalDistanceScaling
                                       <*> parseOutGenotypeFormat
                                       <*> parseOutPath
 
@@ -193,6 +195,15 @@ parseNumberOfNearestNeighbors = OP.option OP.auto (
     OP.showDefault
     )
 
+parseTemporalDistanceScaling :: OP.Parser Double
+parseTemporalDistanceScaling = OP.option OP.auto (
+    OP.long "temporalDistanceScaling" <> 
+    OP.help "Scaling factor for temporal distance in relation to spatial distance. \
+            \Default is 1, so 1year = 1km." <>
+    OP.value 1 <>
+    OP.showDefault
+    )
+
 parseOutGenotypeFormat :: OP.Parser GenotypeFormatSpec
 parseOutGenotypeFormat = OP.option (OP.eitherReader readGenotypeFormat) (
     OP.long "outFormat" <>
@@ -216,7 +227,7 @@ parseOutPath = OP.strOption (
 -- Actual program code
 
 runSpaceTime :: SpaceTimeOptions -> IO ()
-runSpaceTime (SpaceTimeOptions baseDirs poisDirect poisFile numNeighbors outFormat outDir) = do
+runSpaceTime (SpaceTimeOptions baseDirs poisDirect poisFile numNeighbors temporalDistanceScaling outFormat outDir) = do
     -- compile pois
     poisFromFile <- case poisFile of
         Nothing -> return []
@@ -229,7 +240,7 @@ runSpaceTime (SpaceTimeOptions baseDirs poisDirect poisFile numNeighbors outForm
     -- transform to spatiotemporal positions
         stInds = jannoToSpaceTimePos jannos
     -- calculate distances
-        distancesToPois = map (`distanceOneToAll` stInds) pois 
+        distancesToPois = map (\x -> distanceOneToAll temporalDistanceScaling x stInds) pois 
     -- get X closest inds
         closest = map (getClosestInds numNeighbors) distancesToPois
         closestIndividuals = map (map fst) closest
@@ -304,10 +315,10 @@ jannoToSpaceTimePos jannos =
                 (fromMaybe (Longitude 0) (jLongitude x))
     in  map transformTo $ filter filterPos jannos
 
-distanceOneToAll :: IndWithPosition -> [IndWithPosition] -> [(String, String, Double)]
-distanceOneToAll poi = 
+distanceOneToAll :: Double -> IndWithPosition -> [IndWithPosition] -> [(String, String, Double)]
+distanceOneToAll temporalDistanceScaling poi = 
     map (distanceOneToOne poi) 
-    where distanceOneToOne i1 i2 = (ind i1, ind i2, spatioTemporalDistance 1 (pos i1) (pos i2))
+    where distanceOneToOne i1 i2 = (ind i1, ind i2, spatioTemporalDistance temporalDistanceScaling (pos i1) (pos i2))
 
 spatioTemporalDistance :: Double -> SpatialTemporalPosition -> SpatialTemporalPosition -> Double 
 spatioTemporalDistance 
