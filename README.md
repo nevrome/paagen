@@ -4,7 +4,7 @@ This is a highly experimental proof of concept CLI application to generate artif
 
 ### Install
 
-To instead install the latest development version you can follow these steps:
+To install the latest development version you can follow these steps:
 
 1. Install the Haskell build tool [Stack](https://docs.haskellstack.org/en/stable/README/)
 2. Clone the repository
