@@ -36,6 +36,15 @@ data SpaceTimeOptions = SpaceTimeOptions {
     , _optOutPath :: FilePath
     }
 
+pacReadOpts :: PackageReadOptions
+pacReadOpts = defaultPackageReadOptions {
+      _readOptVerbose          = True
+    , _readOptStopOnDuplicates = True
+    , _readOptIgnoreChecksums  = False
+    , _readOptIgnoreGeno       = False
+    , _readOptGenoCheck        = True
+    }
+
 runSpaceTime :: SpaceTimeOptions -> IO ()
 runSpaceTime (SpaceTimeOptions baseDirs poisDirect poisFile numNeighbors temporalDistanceScaling outFormat outDir) = do
     -- compile pois
@@ -44,7 +53,7 @@ runSpaceTime (SpaceTimeOptions baseDirs poisDirect poisFile numNeighbors tempora
         Just f -> readIndWithPositionFromFile f
     let pois = poisDirect ++ poisFromFile --this nub could also be relevant for forge
     -- load Poseidon packages
-    allPackages <- readPoseidonPackageCollection True True False baseDirs
+    allPackages <- readPoseidonPackageCollection pacReadOpts baseDirs
     -- load janno tables
     let jannos = concatMap posPacJanno allPackages
     -- transform to spatiotemporal positions
@@ -116,7 +125,7 @@ sumWeights xs weights = map (\(x, ys) -> (x, sum $ subset ys weights)) xs
 jannoToSpaceTimePos :: [JannoRow] -> [IndWithPosition]
 jannoToSpaceTimePos jannos =
     let filterPos x = (isJust (jDateBCADMedian x) || jDateType x == Just Modern) && isJust (jLatitude x) && isJust (jLongitude x)
-        transformTo x = IndWithPosition (jIndividualID x) (head $ jGroupName x) $
+        transformTo x = IndWithPosition (jIndividualID x) (head $ getJannoList $ jGroupName x) $
             SpatialTemporalPosition 
                 (fromMaybe 2000 (jDateBCADMedian x)) -- If empty then modern (after filter), which is approx. 2000AD
                 (fromMaybe (Latitude 0) (jLatitude x))
