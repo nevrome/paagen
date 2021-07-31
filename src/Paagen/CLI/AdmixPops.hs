@@ -9,6 +9,7 @@ import           Control.Monad                  (forM, guard, when)
 import           Control.Monad.Random           (fromList, RandomGen, evalRand, newStdGen, getStdGen)
 import           Data.List                      
 import           Data.Maybe                     
+import           Data.Ratio                     ((%))
 import qualified Data.Vector                    as V
 import           Pipes
 import qualified Pipes.Prelude                  as P
@@ -21,10 +22,9 @@ import           SequenceFormats.Eigenstrat     (EigenstratIndEntry (..),
                                                 writeEigenstrat)
 import           SequenceFormats.Plink          (writePlink)
 import           System.Console.ANSI            (hClearLine, hSetCursorColumn)
+import           System.Directory               (createDirectoryIfMissing)
 import           System.FilePath                ((<.>), (</>))
 import           System.IO                      (hPutStrLn, stderr, hPutStr)
-import GHC.IO.Exception (ioException)
-import Data.Ratio ((%))
 
 data AdmixPopsOptions = AdmixPopsOptions {   
       _optBaseDirs :: [FilePath]
@@ -62,6 +62,8 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracs outFormat outDir) = do
             GenotypeFormatEigenstrat -> ["poi.ind", "poi.snp", "poi.geno"]
             GenotypeFormatPlink -> ["poi.fam", "poi.bim", "poi.bed"]
     putStrLn $ show $ zip3 pops fracs indicesPerPop
+    -- create output directory
+    createDirectoryIfMissing True outDir
     -- compile genotype data
     runSafeT $ do
         (eigenstratIndEntries, eigenstratProd) <- getJointGenotypeData False False relevantPackages

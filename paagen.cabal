@@ -17,7 +17,7 @@ library
                         Paagen.CLI.SpaceTime, Paagen.CLI.AdmixPops
     hs-source-dirs:     src
     build-depends:      poseidon-hs, base, filepath, vector, sequence-formats, 
-                        pipes-safe, pipes, MonadRandom, ansi-terminal,
+                        pipes-safe, pipes, MonadRandom, ansi-terminal, directory,
                         parsec, parsec3-numbers
     default-language:   Haskell2010
 
