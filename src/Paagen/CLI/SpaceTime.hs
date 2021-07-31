@@ -190,13 +190,3 @@ extractIndIndices indNames relevantPackages = do
     allIndEntries <- mapM getIndividuals relevantPackages
     let filterFunc (_ , pacName, EigenstratIndEntry ind _ group) = ind `elem` indNames
     return $ map extractFirst $ filter filterFunc (zipGroup allPackageNames allIndEntries)
-
-extractFirst :: (a, b, c) -> a
-extractFirst (a,_,_) = a
-
-zipGroup :: [a] -> [[b]] -> [(Int,a,b)]
-zipGroup list nestedList =
-    let lenghtsNestedList = map length nestedList
-        listWithlenghtsNestedList = zip lenghtsNestedList list
-        longerA = map (uncurry replicate) listWithlenghtsNestedList
-    in zip3 [0..] (concat longerA) (concat nestedList)

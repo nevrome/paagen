@@ -1,4 +1,5 @@
 module Paagen.Types (
+    PopulationWithFraction (..),
     IndWithPosition (..),
     SpatialTemporalPosition (..),
     GenoEntry (..)
@@ -9,6 +10,11 @@ import           Poseidon.Package
 import           Poseidon.GenotypeData
 
 import           SequenceFormats.Eigenstrat     (GenoEntry (..))
+
+data PopulationWithFraction = PopulationWithFraction {
+      pop :: String
+    , frac :: Int
+} deriving (Show)
 
 data IndWithPosition = IndWithPosition {
       ind :: String

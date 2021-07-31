@@ -13,7 +13,8 @@ extra-source-files:  README.md,
                      CHANGELOG.md
 
 library
-    exposed-modules:    Paagen.Parsers, Paagen.Types, Paagen.Utils, Paagen.CLI.SpaceTime
+    exposed-modules:    Paagen.Parsers, Paagen.Types, Paagen.Utils, 
+                        Paagen.CLI.SpaceTime, Paagen.CLI.AdmixPops
     hs-source-dirs:     src
     build-depends:      poseidon-hs, base, filepath, vector, sequence-formats, 
                         pipes-safe, pipes, MonadRandom, ansi-terminal,

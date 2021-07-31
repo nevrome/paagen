@@ -5,7 +5,8 @@ import           Paagen.Parsers
 import           Paagen.Types
 import           Paagen.CLI.SpaceTime           (runSpaceTime, 
                                                  SpaceTimeOptions (..))
-
+import           Paagen.CLI.AdmixPops           (runAdmixPops,
+                                                 AdmixPopsOptions (..))
 import           Poseidon.GenotypeData
 
 import           Control.Applicative            ((<|>))
@@ -18,7 +19,9 @@ import Control.Exception (SomeException(SomeException))
 
 -- data types
 
-data Options = CmdSpaceTime SpaceTimeOptions
+data Options = 
+      CmdSpaceTime SpaceTimeOptions
+    | CmdAdmixPops AdmixPopsOptions
 
 -- CLI interface configuration
 
@@ -32,6 +35,7 @@ main = do
 runCmd :: Options -> IO ()
 runCmd o = case o of
     CmdSpaceTime opts -> runSpaceTime opts
+    CmdAdmixPops opts -> runAdmixPops opts
 
 optParserInfo :: OP.ParserInfo Options
 optParserInfo = OP.info (OP.helper <*> versionOption <*> optParser) (
@@ -45,11 +49,14 @@ versionOption = OP.infoOption (showVersion version) (OP.long "version" <> OP.hel
 
 optParser :: OP.Parser Options
 optParser = OP.subparser (
-        OP.command "spacetime" spaceTimeOptInfo
+        OP.command "spacetime" spaceTimeOptInfo <>
+        OP.command "admixpops" admixPopsOptInfo
     )
   where
     spaceTimeOptInfo = OP.info (OP.helper <*> (CmdSpaceTime <$> spaceTimeOptParser))
         (OP.progDesc "Genotype profile generation based on spatiotemporal position")
+    admixPopsOptInfo = OP.info (OP.helper <*> (CmdAdmixPops <$> admixPopsOptParser))
+        (OP.progDesc "Genotype profile generation based on population proportions")
 
 spaceTimeOptParser :: OP.Parser SpaceTimeOptions
 spaceTimeOptParser = SpaceTimeOptions <$> parseBasePaths
@@ -59,6 +66,19 @@ spaceTimeOptParser = SpaceTimeOptions <$> parseBasePaths
                                       <*> parseTemporalDistanceScaling
                                       <*> parseOutGenotypeFormat
                                       <*> parseOutPath
+
+admixPopsOptParser = AdmixPopsOptions <$> parseBasePaths
+                                      <*> parsePopulationsWithFractions
+                                      <*> parseOutGenotypeFormat
+                                      <*> parseOutPath
+
+parsePopulationsWithFractions :: OP.Parser [PopulationWithFraction]
+parsePopulationsWithFractions = OP.option (OP.eitherReader readPopulationWithFractionString) (
+    OP.long "popString" <>
+    OP.short 'p' <>
+    OP.value [] <>
+    OP.help "test"
+    )
 
 parseBasePaths :: OP.Parser [FilePath]
 parseBasePaths = OP.some (OP.strOption (

@@ -11,6 +11,20 @@ import qualified Text.Parsec                    as P
 import qualified Text.Parsec.String             as P
 import qualified Text.Parsec.Number             as P
 
+readPopulationWithFractionString :: String -> Either String [PopulationWithFraction]
+readPopulationWithFractionString s = case P.runParser populationWithFractionParser () "" s of
+    Left p  -> Left (show p)
+    Right x -> Right x
+
+populationWithFractionParser :: P.Parser [PopulationWithFraction]
+populationWithFractionParser = P.try (P.sepBy parsePopulationWithFraction (P.char ';' <* P.spaces))
+
+parsePopulationWithFraction :: P.Parser PopulationWithFraction
+parsePopulationWithFraction = do
+    pop <- P.many (P.noneOf ",")
+    _ <- P.oneOf ","
+    frac <- read <$> P.many1 P.digit
+    return (PopulationWithFraction pop frac)
 
 readIndWithPositionString :: String -> Either String [IndWithPosition]
 readIndWithPositionString s = case P.runParser indWithPositionParser () "" s of
