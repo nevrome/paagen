@@ -5,7 +5,7 @@ import           Paagen.Types                   (PopulationWithFraction (..), Ge
 import           Paagen.Utils
 
 import           Control.Exception              (catch, throwIO, Exception)
-import           Control.Monad                  (forM, guard)
+import           Control.Monad                  (forM, guard, when)
 import           Control.Monad.Random           (fromList, RandomGen, evalRand, newStdGen, getStdGen)
 import           Data.List                      
 import           Data.Maybe                     
@@ -23,6 +23,8 @@ import           SequenceFormats.Plink          (writePlink)
 import           System.Console.ANSI            (hClearLine, hSetCursorColumn)
 import           System.FilePath                ((<.>), (</>))
 import           System.IO                      (hPutStrLn, stderr, hPutStr)
+import GHC.IO.Exception (ioException)
+import Data.Ratio ((%))
 
 data AdmixPopsOptions = AdmixPopsOptions {   
       _optBaseDirs :: [FilePath]
@@ -42,31 +44,42 @@ pacReadOpts = defaultPackageReadOptions {
 
 runAdmixPops :: AdmixPopsOptions -> IO ()
 runAdmixPops (AdmixPopsOptions baseDirs popsWithFracs outFormat outDir) = do
+    -- check input
+    let pops = map pop popsWithFracs
+        fracs = map frac popsWithFracs
+    when (sum fracs /= 100) $ do
+        throwIO $ PaagenCLIParsingException "Fractions have to sum to 100%"
     -- load Poseidon packages
     allPackages <- readPoseidonPackageCollection pacReadOpts baseDirs
-    -- load janno tables
-    let jannos = concatMap posPacJanno allPackages
     -- determine relevant packages and indices
-    let pops = map pop popsWithFracs
     relevantPackages <- filterPackagesByPops pops allPackages
     indicesPerPop <- mapM (`extractIndsPerPop` relevantPackages) pops
-    let popsFracsInds = zip3 pops (map frac popsWithFracs) indicesPerPop
+    let fracsInds = zip fracs indicesPerPop
+        weights = weightsPerInd fracsInds
+    -- prepare weights per individual
     -- compile genotype data structure
     let [outInd, outSnp, outGeno] = case outFormat of 
             GenotypeFormatEigenstrat -> ["poi.ind", "poi.snp", "poi.geno"]
             GenotypeFormatPlink -> ["poi.fam", "poi.bim", "poi.bed"]
-    putStrLn $ show popsFracsInds
-    return ()
+    putStrLn $ show $ zip3 pops fracs indicesPerPop
     -- compile genotype data
-    -- runSafeT $ do
-    --     (eigenstratIndEntries, eigenstratProd) <- getJointGenotypeData False False relevantPackages
-    --     let [outG, outS, outI] = map (outDir </>) [outGeno, outSnp, outInd]
-    --         newIndEntries = map (\x -> EigenstratIndEntry (ind x) Unknown (unit x)) pois
-    --     let outConsumer = case outFormat of
-    --             GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI newIndEntries 
-    --             GenotypeFormatPlink      -> writePlink      outG outS outI newIndEntries
-    --     runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (sampleGenoForMultiplePOIs infoForIndividualPOIs) >-> outConsumer
-    --     liftIO $ hPutStrLn stderr "Done"
+    runSafeT $ do
+        (eigenstratIndEntries, eigenstratProd) <- getJointGenotypeData False False relevantPackages
+        let [outG, outS, outI] = map (outDir </>) [outGeno, outSnp, outInd]
+            newIndEntry = EigenstratIndEntry "testInd" Unknown "testGroup"
+        let outConsumer = case outFormat of
+                GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI [newIndEntry]
+                GenotypeFormatPlink      -> writePlink      outG outS outI [newIndEntry]
+        runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (sampleGenoForMultiplePOIs [weights]) >-> outConsumer
+        liftIO $ hPutStrLn stderr "Done"
+
+weightsPerInd :: [(Int, [Int])] -> ([Int], [Rational])
+weightsPerInd fracAndInds = unzip $ concatMap
+            (\(x,y) -> zipWith3 (\a b c -> (a, b % c)) 
+                y 
+                (replicate (length y) (toInteger x)) 
+                (replicate (length y) (toInteger (length y)))
+            ) fracAndInds
 
 filterPackagesByPops :: [String] -> [PoseidonPackage] -> IO [PoseidonPackage]
 filterPackagesByPops pops packages = do
