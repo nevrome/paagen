@@ -69,15 +69,24 @@ spaceTimeOptParser = SpaceTimeOptions <$> parseBasePaths
 
 admixPopsOptParser = AdmixPopsOptions <$> parseBasePaths
                                       <*> parsePopulationsWithFractions
+                                      <*> parsePopulationsWithFractionsFromFile
                                       <*> parseOutGenotypeFormat
                                       <*> parseOutPath
 
-parsePopulationsWithFractions :: OP.Parser [PopulationWithFraction]
+parsePopulationsWithFractions :: OP.Parser [[PopulationWithFraction]]
 parsePopulationsWithFractions = OP.option (OP.eitherReader readPopulationWithFractionString) (
     OP.long "popString" <>
     OP.short 'p' <>
     OP.value [] <>
     OP.help "test"
+    )
+
+parsePopulationsWithFractionsFromFile :: OP.Parser (Maybe FilePath)
+parsePopulationsWithFractionsFromFile = OP.option (Just <$> OP.str) (OP.long "popFile" <>
+    OP.value Nothing <>
+    OP.help "A file with a list of spatiotemporal positions. \
+            \Works just as -p, but multiple values can be given separated by newline. \
+            \-p and --popFile can be combined."
     )
 
 parseBasePaths :: OP.Parser [FilePath]

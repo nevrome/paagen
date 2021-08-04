@@ -28,7 +28,8 @@ import           System.IO                      (hPutStrLn, stderr, hPutStr)
 
 data AdmixPopsOptions = AdmixPopsOptions {   
       _optBaseDirs :: [FilePath]
-    , _optPopulationsWithFractions :: [PopulationWithFraction]
+    , _optPopulationsWithFractions :: [[PopulationWithFraction]]
+    , _optPopulationsWithFractionsFile :: Maybe FilePath
     , _optOutFormat :: GenotypeFormatSpec
     , _optOutPath :: FilePath
     }
@@ -43,19 +44,23 @@ pacReadOpts = defaultPackageReadOptions {
     }
 
 runAdmixPops :: AdmixPopsOptions -> IO ()
-runAdmixPops (AdmixPopsOptions baseDirs popsWithFracs outFormat outDir) = do
+runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile outFormat outDir) = do
     -- check input
-    let pops = map pop popsWithFracs
-        fracs = map frac popsWithFracs
-    when (sum fracs /= 100) $ do
-        throwIO $ PaagenCLIParsingException "Fractions have to sum to 100%"
+    popsWithFracsFromFile <- case popsWithFracsFile of
+        Nothing -> return []
+        Just f -> readPopulationWithFractionFromFile f
+    let popsWithFracs = popsWithFracsDirect ++ popsWithFracsFromFile 
+        pops = map (map pop) popsWithFracs
+        fracs = map (map frac) popsWithFracs
+    -- when (sum fracs /= 100) $ do
+    --     throwIO $ PaagenCLIParsingException "Fractions have to sum to 100%"
     -- load Poseidon packages
     allPackages <- readPoseidonPackageCollection pacReadOpts baseDirs
     -- determine relevant packages and indices
-    relevantPackages <- filterPackagesByPops pops allPackages
-    indicesPerPop <- mapM (`extractIndsPerPop` relevantPackages) pops
-    let fracsInds = zip fracs indicesPerPop
-        weights = weightsPerInd fracsInds
+    relevantPackages <- filterPackagesByPops (concat pops) allPackages
+    indicesPerPop <- mapM (mapM (`extractIndsPerPop` relevantPackages)) pops
+    let fracsInds = zipWith zip fracs indicesPerPop
+        weights = map weightsPerInd fracsInds
     -- prepare weights per individual
     -- compile genotype data structure
     let [outInd, outSnp, outGeno] = case outFormat of 
@@ -72,7 +77,7 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracs outFormat outDir) = do
         let outConsumer = case outFormat of
                 GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI [newIndEntry]
                 GenotypeFormatPlink      -> writePlink      outG outS outI [newIndEntry]
-        runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (sampleGenoForMultiplePOIs [weights]) >-> outConsumer
+        runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (sampleGenoForMultiplePOIs weights) >-> outConsumer
         liftIO $ hPutStrLn stderr "Done"
 
 weightsPerInd :: [(Int, [Int])] -> ([Int], [Rational])

@@ -11,18 +11,29 @@ import qualified Text.Parsec                    as P
 import qualified Text.Parsec.String             as P
 import qualified Text.Parsec.Number             as P
 
-readPopulationWithFractionString :: String -> Either String [PopulationWithFraction]
-readPopulationWithFractionString s = case P.runParser populationWithFractionParser () "" s of
+readPopulationWithFractionString :: String -> Either String [[PopulationWithFraction]]
+readPopulationWithFractionString s = case P.runParser populationWithFractionMultiParser () "" s of
     Left p  -> Left (show p)
     Right x -> Right x
 
+readPopulationWithFractionFromFile :: FilePath -> IO [[PopulationWithFraction]]
+readPopulationWithFractionFromFile file = do
+    let multiPopParser = populationWithFractionMultiParser `P.sepBy1` (P.newline *> P.spaces)
+    eitherParseResult <- P.parseFromFile (P.spaces *> multiPopParser <* P.spaces) file
+    case eitherParseResult of
+        Left err -> throwIO $ PaagenCLIParsingException (show err)
+        Right r -> return (concat r)
+
+populationWithFractionMultiParser :: P.Parser [[PopulationWithFraction]]
+populationWithFractionMultiParser = P.try (P.sepBy populationWithFractionParser (P.char ';' <* P.spaces))
+
 populationWithFractionParser :: P.Parser [PopulationWithFraction]
-populationWithFractionParser = P.try (P.sepBy parsePopulationWithFraction (P.char ';' <* P.spaces))
+populationWithFractionParser = P.try (P.sepBy parsePopulationWithFraction (P.char '+' <* P.spaces))
 
 parsePopulationWithFraction :: P.Parser PopulationWithFraction
 parsePopulationWithFraction = do
-    pop <- P.many (P.noneOf ",")
-    _ <- P.oneOf ","
+    pop <- P.many (P.noneOf ":")
+    _ <- P.oneOf ":"
     frac <- read <$> P.many1 P.digit
     return (PopulationWithFraction pop frac)
 
