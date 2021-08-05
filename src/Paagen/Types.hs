@@ -14,14 +14,14 @@ import           Poseidon.GenotypeData
 import           SequenceFormats.Eigenstrat     (GenoEntry (..))
 
 data IndWithAdmixtureSet = IndWithAdmixtureSet {
-      admixtureId :: String
+      admixId :: String
     , admixUnit :: String 
-    , admixtureSet :: AdmixtureSet
+    , admixSet :: AdmixtureSet
 }
 
 data AdmixtureSet = AdmixtureSet {
     popFracList :: [PopulationWithFraction]
-} 
+}
 
 data PopulationWithFraction = PopulationWithFraction {
       pop :: String

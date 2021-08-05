@@ -68,21 +68,21 @@ spaceTimeOptParser = SpaceTimeOptions <$> parseBasePaths
                                       <*> parseOutPath
 
 admixPopsOptParser = AdmixPopsOptions <$> parseBasePaths
-                                      <*> parsePopulationsWithFractions
-                                      <*> parsePopulationsWithFractionsFromFile
+                                      <*> parseIndWithAdmixtureSetDirect
+                                      <*> parseIndWithAdmixtureSetFromFile
                                       <*> parseOutGenotypeFormat
                                       <*> parseOutPath
 
-parsePopulationsWithFractions :: OP.Parser [IndWithAdmixtureSet]
-parsePopulationsWithFractions = OP.option (OP.eitherReader readIndWithAdmixtureSetString) (
+parseIndWithAdmixtureSetDirect :: OP.Parser [IndWithAdmixtureSet]
+parseIndWithAdmixtureSetDirect = OP.option (OP.eitherReader readIndWithAdmixtureSetString) (
     OP.long "popString" <>
     OP.short 'p' <>
     OP.value [] <>
     OP.help "test"
     )
 
-parsePopulationsWithFractionsFromFile :: OP.Parser (Maybe FilePath)
-parsePopulationsWithFractionsFromFile = OP.option (Just <$> OP.str) (OP.long "popFile" <>
+parseIndWithAdmixtureSetFromFile :: OP.Parser (Maybe FilePath)
+parseIndWithAdmixtureSetFromFile = OP.option (Just <$> OP.str) (OP.long "popFile" <>
     OP.value Nothing <>
     OP.help "A file with a list of spatiotemporal positions. \
             \Works just as -p, but multiple values can be given separated by newline. \

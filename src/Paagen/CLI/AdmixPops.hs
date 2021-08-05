@@ -50,7 +50,7 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
         Nothing -> return []
         Just f -> readIndWithAdmixtureSetFromFile f
     let requestedInds = popsWithFracsDirect ++ popsWithFracsFromFile 
-        popsWithFracs = map (popFracList . admixtureSet) requestedInds
+        popsWithFracs = map (popFracList . admixSet) requestedInds
         pops = map (map pop) popsWithFracs
         fracs = map (map frac) popsWithFracs
     -- when (sum fracs /= 100) $ do
@@ -74,10 +74,11 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
     runSafeT $ do
         (eigenstratIndEntries, eigenstratProd) <- getJointGenotypeData False False relevantPackages
         let [outG, outS, outI] = map (outDir </>) [outGeno, outSnp, outInd]
-            newIndEntry = EigenstratIndEntry "testInd" Unknown "testGroup"
+            --newIndEntry = EigenstratIndEntry "testInd" Unknown "testGroup"
+            newIndEntries = map (\x -> EigenstratIndEntry (admixId x) Unknown (admixUnit x)) requestedInds
         let outConsumer = case outFormat of
-                GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI [newIndEntry]
-                GenotypeFormatPlink      -> writePlink      outG outS outI [newIndEntry]
+                GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI newIndEntries
+                GenotypeFormatPlink      -> writePlink      outG outS outI newIndEntries
         runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (sampleGenoForMultiplePOIs weights) >-> outConsumer
         liftIO $ hPutStrLn stderr "Done"
 
