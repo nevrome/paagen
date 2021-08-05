@@ -1,9 +1,7 @@
 module Paagen.CLI.SpaceTime where
 
 import           Paagen.Parsers
-import           Paagen.Types                   (IndWithPosition (..),
-                                                 SpatialTemporalPosition (..), 
-                                                 GenoEntry (..))
+import           Paagen.Types
 import           Paagen.Utils
 
 import           Control.Exception              (catch, throwIO, Exception)
@@ -27,13 +25,13 @@ import           System.FilePath                ((<.>), (</>))
 import           System.IO                      (hPutStrLn, stderr, hPutStr)
 
 data SpaceTimeOptions = SpaceTimeOptions {   
-      _optBaseDirs :: [FilePath]
-    , _optIndWithPosition :: [IndWithPosition]
-    , _optIndWithPositionFile :: Maybe FilePath
-    , _optNumberOfNearestNeighbors :: Int
-    , _optTemporalDistanceScaling :: Double
-    , _optOutFormat :: GenotypeFormatSpec
-    , _optOutPath :: FilePath
+      _spatBaseDirs :: [FilePath]
+    , _spatIndWithPosition :: [IndWithPosition]
+    , _spatIndWithPositionFile :: Maybe FilePath
+    , _spatNumberOfNearestNeighbors :: Int
+    , _spatTemporalDistanceScaling :: Double
+    , _spatOutFormat :: GenotypeFormatSpec
+    , _spatOutPath :: FilePath
     }
 
 pacReadOpts :: PackageReadOptions
@@ -51,7 +49,7 @@ runSpaceTime (SpaceTimeOptions baseDirs poisDirect poisFile numNeighbors tempora
     poisFromFile <- case poisFile of
         Nothing -> return []
         Just f -> readIndWithPositionFromFile f
-    let pois = poisDirect ++ poisFromFile --this nub could also be relevant for forge
+    let pois = poisDirect ++ poisFromFile
     -- load Poseidon packages
     allPackages <- readPoseidonPackageCollection pacReadOpts baseDirs
     -- load janno tables
@@ -72,14 +70,14 @@ runSpaceTime (SpaceTimeOptions baseDirs poisDirect poisFile numNeighbors tempora
     -- merge poi indices and weights
     let infoForIndividualPOIs = zip closestIndices closestWeights
     -- compile genotype data structure
-    let [outInd, outSnp, outGeno] = case outFormat of 
-            GenotypeFormatEigenstrat -> ["poi.ind", "poi.snp", "poi.geno"]
-            GenotypeFormatPlink -> ["poi.fam", "poi.bim", "poi.bed"]
+    let [outInd, outSnp, outGeno] = case outFormat of
+            GenotypeFormatEigenstrat -> ["res.ind", "res.snp", "res.geno"]
+            GenotypeFormatPlink -> ["res.fam", "res.bim", "res.bed"]
     -- compile genotype data
     runSafeT $ do
         (eigenstratIndEntries, eigenstratProd) <- getJointGenotypeData False False relevantPackages
         let [outG, outS, outI] = map (outDir </>) [outGeno, outSnp, outInd]
-            newIndEntries = map (\x -> EigenstratIndEntry (ind x) Unknown (unit x)) pois
+            newIndEntries = map (\x -> EigenstratIndEntry (spatInd x) Unknown (spatUnit x)) pois
         let outConsumer = case outFormat of
                 GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI newIndEntries 
                 GenotypeFormatPlink      -> writePlink      outG outS outI newIndEntries
@@ -99,7 +97,7 @@ jannoToSpaceTimePos jannos =
 distanceOneToAll :: Double -> IndWithPosition -> [IndWithPosition] -> [(String, String, Double)]
 distanceOneToAll temporalDistanceScaling poi = 
     map (distanceOneToOne poi) 
-    where distanceOneToOne i1 i2 = (ind i1, ind i2, spatioTemporalDistance temporalDistanceScaling (pos i1) (pos i2))
+    where distanceOneToOne i1 i2 = (spatInd i1, spatInd i2, spatioTemporalDistance temporalDistanceScaling (spatPos i1) (spatPos i2))
 
 spatioTemporalDistance :: Double -> SpatialTemporalPosition -> SpatialTemporalPosition -> Double 
 spatioTemporalDistance 

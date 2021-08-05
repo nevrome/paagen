@@ -75,18 +75,21 @@ admixPopsOptParser = AdmixPopsOptions <$> parseBasePaths
 
 parseIndWithAdmixtureSetDirect :: OP.Parser [IndWithAdmixtureSet]
 parseIndWithAdmixtureSetDirect = OP.option (OP.eitherReader readIndWithAdmixtureSetString) (
-    OP.long "popString" <>
-    OP.short 'p' <>
+    OP.long "admixString" <>
+    OP.short 'a' <>
     OP.value [] <>
-    OP.help "test"
+    OP.help "Population setup of interest: Each setup is a string of the form \
+            \\"[id:group](population1=10+population2=30+...)\". Multiple setups can be listed separated by ;. \
+            \id and group are simple strings. \
+            \The population fractions must be simple integers and sum to 100."
     )
 
 parseIndWithAdmixtureSetFromFile :: OP.Parser (Maybe FilePath)
-parseIndWithAdmixtureSetFromFile = OP.option (Just <$> OP.str) (OP.long "popFile" <>
+parseIndWithAdmixtureSetFromFile = OP.option (Just <$> OP.str) (OP.long "admixFile" <>
     OP.value Nothing <>
     OP.help "A file with a list of spatiotemporal positions. \
             \Works just as -p, but multiple values can be given separated by newline. \
-            \-p and --popFile can be combined."
+            \-a and --admixFile can be combined."
     )
 
 parseBasePaths :: OP.Parser [FilePath]
@@ -102,7 +105,7 @@ parseIndWithPositionDirect = OP.option (OP.eitherReader readIndWithPositionStrin
     OP.long "positionString" <>
     OP.short 'p' <>
     OP.value [] <>
-    OP.help "Spatiotemporal positions of interest: each position is a string of the form \
+    OP.help "Spatiotemporal positions of interest: Each position is a string of the form \
             \\"[id:group](time,latitude,longitude)\". Multiple positions can be listed separated by ;. \
             \id and group are simple strings, latitude and longitude must be given in decimal degrees \
             \and time in calBC/AD, so 3245BC would be -3245 and 1148AD just 1148"
@@ -137,7 +140,7 @@ parseOutGenotypeFormat :: OP.Parser GenotypeFormatSpec
 parseOutGenotypeFormat = OP.option (OP.eitherReader readGenotypeFormat) (
     OP.long "outFormat" <>
     OP.help "The format of the output genotype data: EIGENSTRAT or PLINK" <>
-    OP.value GenotypeFormatPlink
+    OP.value GenotypeFormatEigenstrat
     )
     where
     readGenotypeFormat :: String -> Either String GenotypeFormatSpec

@@ -42,8 +42,8 @@ populationWithFractionMultiParser = P.try (P.sepBy parsePopulationWithFraction (
 
 parsePopulationWithFraction :: P.Parser PopulationWithFraction
 parsePopulationWithFraction = do
-    pop <- P.many (P.noneOf ":")
-    _ <- P.oneOf ":"
+    pop <- P.many (P.noneOf "=")
+    _ <- P.oneOf "="
     frac <- read <$> P.many1 P.digit
     return (PopulationWithFraction pop frac)
 

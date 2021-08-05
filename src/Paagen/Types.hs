@@ -14,7 +14,7 @@ import           Poseidon.GenotypeData
 import           SequenceFormats.Eigenstrat     (GenoEntry (..))
 
 data IndWithAdmixtureSet = IndWithAdmixtureSet {
-      admixId :: String
+      admixInd :: String
     , admixUnit :: String 
     , admixSet :: AdmixtureSet
 }
@@ -29,9 +29,9 @@ data PopulationWithFraction = PopulationWithFraction {
 } deriving (Show)
 
 data IndWithPosition = IndWithPosition {
-      ind :: String
-    , unit :: String
-    , pos :: SpatialTemporalPosition
+      spatInd :: String
+    , spatUnit :: String
+    , spatPos :: SpatialTemporalPosition
 } deriving (Show)
 
 data SpatialTemporalPosition = SpatialTemporalPosition {

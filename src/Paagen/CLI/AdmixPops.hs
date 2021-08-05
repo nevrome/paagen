@@ -27,25 +27,25 @@ import           System.FilePath                ((<.>), (</>))
 import           System.IO                      (hPutStrLn, stderr, hPutStr)
 
 data AdmixPopsOptions = AdmixPopsOptions {   
-      _optBaseDirs :: [FilePath]
-    , _optIndWithAdmixtureSet :: [IndWithAdmixtureSet]
-    , _optIndWithAdmixtureSetFile :: Maybe FilePath
-    , _optOutFormat :: GenotypeFormatSpec
-    , _optOutPath :: FilePath
+      _admixBaseDirs :: [FilePath]
+    , _admixIndWithAdmixtureSet :: [IndWithAdmixtureSet]
+    , _admixIndWithAdmixtureSetFile :: Maybe FilePath
+    , _admixOutFormat :: GenotypeFormatSpec
+    , _admixOutPath :: FilePath
     }
 
 pacReadOpts :: PackageReadOptions
 pacReadOpts = defaultPackageReadOptions {
       _readOptVerbose          = True
     , _readOptStopOnDuplicates = True
-    , _readOptIgnoreChecksums  = True --False
-    , _readOptIgnoreGeno       = True --False
+    , _readOptIgnoreChecksums  = False
+    , _readOptIgnoreGeno       = False
     , _readOptGenoCheck        = True
     }
 
 runAdmixPops :: AdmixPopsOptions -> IO ()
 runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile outFormat outDir) = do
-    -- check input
+    -- compile individuals
     popsWithFracsFromFile <- case popsWithFracsFile of
         Nothing -> return []
         Just f -> readIndWithAdmixtureSetFromFile f
@@ -60,35 +60,25 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
     -- determine relevant packages and indices
     relevantPackages <- filterPackagesByPops (concat pops) allPackages
     indicesPerPop <- mapM (mapM (`extractIndsPerPop` relevantPackages)) pops
+    -- prepare weights per individual
     let fracsInds = zipWith zip fracs indicesPerPop
         weights = map weightsPerInd fracsInds
-    -- prepare weights per individual
     -- compile genotype data structure
-    let [outInd, outSnp, outGeno] = case outFormat of 
-            GenotypeFormatEigenstrat -> ["poi.ind", "poi.snp", "poi.geno"]
-            GenotypeFormatPlink -> ["poi.fam", "poi.bim", "poi.bed"]
-    putStrLn $ show $ zip3 pops fracs indicesPerPop
+    let [outInd, outSnp, outGeno] = case outFormat of
+            GenotypeFormatEigenstrat -> ["res.ind", "res.snp", "res.geno"]
+            GenotypeFormatPlink -> ["res.fam", "res.bim", "res.bed"]
     -- create output directory
     createDirectoryIfMissing True outDir
     -- compile genotype data
     runSafeT $ do
         (eigenstratIndEntries, eigenstratProd) <- getJointGenotypeData False False relevantPackages
         let [outG, outS, outI] = map (outDir </>) [outGeno, outSnp, outInd]
-            --newIndEntry = EigenstratIndEntry "testInd" Unknown "testGroup"
-            newIndEntries = map (\x -> EigenstratIndEntry (admixId x) Unknown (admixUnit x)) requestedInds
+            newIndEntries = map (\x -> EigenstratIndEntry (admixInd x) Unknown (admixUnit x)) requestedInds
         let outConsumer = case outFormat of
                 GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI newIndEntries
                 GenotypeFormatPlink      -> writePlink      outG outS outI newIndEntries
         runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (sampleGenoForMultiplePOIs weights) >-> outConsumer
         liftIO $ hPutStrLn stderr "Done"
-
-weightsPerInd :: [(Int, [Int])] -> ([Int], [Rational])
-weightsPerInd fracAndInds = unzip $ concatMap
-            (\(x,y) -> zipWith3 (\a b c -> (a, b % c)) 
-                y 
-                (replicate (length y) (toInteger x)) 
-                (replicate (length y) (toInteger (length y)))
-            ) fracAndInds
 
 filterPackagesByPops :: [String] -> [PoseidonPackage] -> IO [PoseidonPackage]
 filterPackagesByPops pops packages = do
@@ -105,3 +95,11 @@ extractIndsPerPop pop relevantPackages = do
     allIndEntries <- mapM getIndividuals relevantPackages
     let filterFunc (_ , pacName, EigenstratIndEntry ind _ group) = group == pop
     return $ map extractFirst $ filter filterFunc (zipGroup allPackageNames allIndEntries)
+
+weightsPerInd :: [(Int, [Int])] -> ([Int], [Rational])
+weightsPerInd fracAndInds = unzip $ concatMap
+            (\(x,y) -> zipWith3 (\a b c -> (a, b % c)) 
+                y 
+                (replicate (length y) (toInteger x)) 
+                (replicate (length y) (toInteger (length y)))
+            ) fracAndInds
