@@ -73,8 +73,8 @@ admixPopsOptParser = AdmixPopsOptions <$> parseBasePaths
                                       <*> parseOutGenotypeFormat
                                       <*> parseOutPath
 
-parsePopulationsWithFractions :: OP.Parser [[PopulationWithFraction]]
-parsePopulationsWithFractions = OP.option (OP.eitherReader readPopulationWithFractionString) (
+parsePopulationsWithFractions :: OP.Parser [IndWithAdmixtureSet]
+parsePopulationsWithFractions = OP.option (OP.eitherReader readIndWithAdmixtureSetString) (
     OP.long "popString" <>
     OP.short 'p' <>
     OP.value [] <>

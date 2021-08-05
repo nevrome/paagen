@@ -1,4 +1,6 @@
 module Paagen.Types (
+    IndWithAdmixtureSet (..),
+    AdmixtureSet (..),
     PopulationWithFraction (..),
     IndWithPosition (..),
     SpatialTemporalPosition (..),
@@ -10,6 +12,16 @@ import           Poseidon.Package
 import           Poseidon.GenotypeData
 
 import           SequenceFormats.Eigenstrat     (GenoEntry (..))
+
+data IndWithAdmixtureSet = IndWithAdmixtureSet {
+      admixtureId :: String
+    , admixUnit :: String 
+    , admixtureSet :: AdmixtureSet
+}
+
+data AdmixtureSet = AdmixtureSet {
+    popFracList :: [PopulationWithFraction]
+} 
 
 data PopulationWithFraction = PopulationWithFraction {
       pop :: String

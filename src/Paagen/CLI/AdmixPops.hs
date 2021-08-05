@@ -1,7 +1,7 @@
 module Paagen.CLI.AdmixPops where
 
 import           Paagen.Parsers
-import           Paagen.Types                   (PopulationWithFraction (..), GenoEntry (..))
+import           Paagen.Types
 import           Paagen.Utils
 
 import           Control.Exception              (catch, throwIO, Exception)
@@ -28,8 +28,8 @@ import           System.IO                      (hPutStrLn, stderr, hPutStr)
 
 data AdmixPopsOptions = AdmixPopsOptions {   
       _optBaseDirs :: [FilePath]
-    , _optPopulationsWithFractions :: [[PopulationWithFraction]]
-    , _optPopulationsWithFractionsFile :: Maybe FilePath
+    , _optIndWithAdmixtureSet :: [IndWithAdmixtureSet]
+    , _optIndWithAdmixtureSetFile :: Maybe FilePath
     , _optOutFormat :: GenotypeFormatSpec
     , _optOutPath :: FilePath
     }
@@ -48,8 +48,9 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
     -- check input
     popsWithFracsFromFile <- case popsWithFracsFile of
         Nothing -> return []
-        Just f -> readPopulationWithFractionFromFile f
-    let popsWithFracs = popsWithFracsDirect ++ popsWithFracsFromFile 
+        Just f -> readIndWithAdmixtureSetFromFile f
+    let requestedInds = popsWithFracsDirect ++ popsWithFracsFromFile 
+        popsWithFracs = map (popFracList . admixtureSet) requestedInds
         pops = map (map pop) popsWithFracs
         fracs = map (map frac) popsWithFracs
     -- when (sum fracs /= 100) $ do

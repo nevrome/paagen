@@ -11,24 +11,34 @@ import qualified Text.Parsec                    as P
 import qualified Text.Parsec.String             as P
 import qualified Text.Parsec.Number             as P
 
-readPopulationWithFractionString :: String -> Either String [[PopulationWithFraction]]
-readPopulationWithFractionString s = case P.runParser populationWithFractionMultiParser () "" s of
+readIndWithAdmixtureSetString :: String -> Either String [IndWithAdmixtureSet]
+readIndWithAdmixtureSetString s = case P.runParser indWithAdmixtureSetMultiParser () "" s of
     Left p  -> Left (show p)
     Right x -> Right x
 
-readPopulationWithFractionFromFile :: FilePath -> IO [[PopulationWithFraction]]
-readPopulationWithFractionFromFile file = do
-    let multiPopParser = populationWithFractionMultiParser `P.sepBy1` (P.newline *> P.spaces)
-    eitherParseResult <- P.parseFromFile (P.spaces *> multiPopParser <* P.spaces) file
+readIndWithAdmixtureSetFromFile :: FilePath -> IO [IndWithAdmixtureSet]
+readIndWithAdmixtureSetFromFile file = do
+    let multiParser = indWithAdmixtureSetMultiParser `P.sepBy1` (P.newline *> P.spaces)
+    eitherParseResult <- P.parseFromFile (P.spaces *> multiParser <* P.spaces) file
     case eitherParseResult of
         Left err -> throwIO $ PaagenCLIParsingException (show err)
         Right r -> return (concat r)
 
-populationWithFractionMultiParser :: P.Parser [[PopulationWithFraction]]
-populationWithFractionMultiParser = P.try (P.sepBy populationWithFractionParser (P.char ';' <* P.spaces))
+indWithAdmixtureSetMultiParser :: P.Parser [IndWithAdmixtureSet]
+indWithAdmixtureSetMultiParser = P.try (P.sepBy parseIndWithAdmixtureSet (P.char ';' <* P.spaces))
 
-populationWithFractionParser :: P.Parser [PopulationWithFraction]
-populationWithFractionParser = P.try (P.sepBy parsePopulationWithFraction (P.char '+' <* P.spaces))
+parseIndWithAdmixtureSet :: P.Parser IndWithAdmixtureSet
+parseIndWithAdmixtureSet = do
+    _ <- P.oneOf "["
+    ind <- P.manyTill P.anyChar (P.string ":")
+    unit <- P.manyTill P.anyChar (P.string "]")
+    _ <- P.oneOf "("
+    admixSet <- populationWithFractionMultiParser
+    _ <- P.oneOf ")"
+    return (IndWithAdmixtureSet ind unit (AdmixtureSet admixSet))
+
+populationWithFractionMultiParser :: P.Parser [PopulationWithFraction]
+populationWithFractionMultiParser = P.try (P.sepBy parsePopulationWithFraction (P.char '+' <* P.spaces))
 
 parsePopulationWithFraction :: P.Parser PopulationWithFraction
 parsePopulationWithFraction = do
