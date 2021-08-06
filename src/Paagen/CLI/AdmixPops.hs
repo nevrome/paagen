@@ -59,10 +59,7 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
     allPackages <- readPoseidonPackageCollection pacReadOpts baseDirs
     -- determine relevant packages and indices
     relevantPackages <- filterPackagesByPops (concat pops) allPackages
-    indicesPerPop <- mapM (mapM (`extractIndsPerPop` relevantPackages)) pops
-    -- prepare weights per individual
-    let fracsInds = zipWith zip fracs indicesPerPop
-        weights = map weightsPerInd fracsInds
+    popsFracsInds <- mapM (mapM (`extractIndsPerPop` relevantPackages)) popsWithFracs
     -- compile genotype data structure
     let [outInd, outSnp, outGeno] = case outFormat of
             GenotypeFormatEigenstrat -> ["res.ind", "res.snp", "res.geno"]
@@ -77,7 +74,7 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
         let outConsumer = case outFormat of
                 GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI newIndEntries
                 GenotypeFormatPlink      -> writePlink      outG outS outI newIndEntries
-        runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (sampleGenoForMultiplePOIs weights) >-> outConsumer
+        runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (sampleGenoForMultiplePOIs popsFracsInds) >-> outConsumer
         liftIO $ hPutStrLn stderr "Done"
 
 filterPackagesByPops :: [String] -> [PoseidonPackage] -> IO [PoseidonPackage]
@@ -89,12 +86,12 @@ filterPackagesByPops pops packages = do
         then return (Just pac)
         else return Nothing
 
-extractIndsPerPop :: String -> [PoseidonPackage] -> IO [Int]
-extractIndsPerPop pop relevantPackages = do
+extractIndsPerPop :: PopulationWithFraction -> [PoseidonPackage] -> IO (String, Int, [Int])
+extractIndsPerPop (PopulationWithFraction pop frac) relevantPackages = do
     let allPackageNames = map posPacTitle relevantPackages
     allIndEntries <- mapM getIndividuals relevantPackages
     let filterFunc (_ , pacName, EigenstratIndEntry ind _ group) = group == pop
-    return $ map extractFirst $ filter filterFunc (zipGroup allPackageNames allIndEntries)
+    return $ (,,) pop frac $ map extractFirst $ filter filterFunc (zipGroup allPackageNames allIndEntries)
 
 weightsPerInd :: [(Int, [Int])] -> ([Int], [Rational])
 weightsPerInd fracAndInds = unzip $ concatMap
