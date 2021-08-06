@@ -9,7 +9,6 @@ import           Control.Monad                  (forM, guard, when)
 import           Control.Monad.Random           (fromList, RandomGen, evalRand, newStdGen, getStdGen)
 import           Data.List                      
 import           Data.Maybe                     
-import           Data.Ratio                     ((%))
 import qualified Data.Vector                    as V
 import           Pipes
 import qualified Pipes.Prelude                  as P
@@ -26,6 +25,7 @@ import           System.Console.ANSI            (hClearLine, hSetCursorColumn)
 import           System.Directory               (createDirectoryIfMissing)
 import           System.FilePath                ((<.>), (</>))
 import           System.IO                      (hPutStrLn, stderr, hPutStr)
+import Data.Ratio ((%))
 
 data AdmixPopsOptions = AdmixPopsOptions {   
       _admixBaseDirs :: [FilePath]
@@ -53,7 +53,6 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
     let requestedInds = popsWithFracsDirect ++ popsWithFracsFromFile 
         popsWithFracs = map (popFracList . admixSet) requestedInds
         pops = map (map pop) popsWithFracs
-        fracs = map (map frac) popsWithFracs
     -- when (sum fracs /= 100) $ do
     --     throwIO $ PaagenCLIParsingException "Fractions have to sum to 100%"
     -- load Poseidon packages
@@ -76,7 +75,7 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
         let outConsumer = case outFormat of
                 GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI newIndEntries
                 GenotypeFormatPlink      -> writePlink      outG outS outI newIndEntries
-        runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (sampleGenoForMultiplePOIs popsFracsInds) >-> outConsumer
+        runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (sampleGenoForMultipleIndWithAdmixtureSet popsFracsInds) >-> outConsumer
         liftIO $ hPutStrLn stderr "Done"
     -- complete poseidon package
     hPutStrLn stderr "Wrapping generated genotype data in a Poseidon package"
@@ -96,12 +95,12 @@ filterPackagesByPops pops packages = do
         then return (Just pac)
         else return Nothing
 
-extractIndsPerPop :: PopulationWithFraction -> [PoseidonPackage] -> IO (String, Int, [Int])
+extractIndsPerPop :: PopulationWithFraction -> [PoseidonPackage] -> IO ([Int], Rational)
 extractIndsPerPop (PopulationWithFraction pop frac) relevantPackages = do
     let allPackageNames = map posPacTitle relevantPackages
     allIndEntries <- mapM getIndividuals relevantPackages
     let filterFunc (_ , pacName, EigenstratIndEntry ind _ group) = group == pop
-    return $ (,,) pop frac $ map extractFirst $ filter filterFunc (zipGroup allPackageNames allIndEntries)
+    return (map extractFirst $ filter filterFunc (zipGroup allPackageNames allIndEntries), toInteger frac % 100)
 
 weightsPerInd :: [(Int, [Int])] -> ([Int], [Rational])
 weightsPerInd fracAndInds = unzip $ concatMap

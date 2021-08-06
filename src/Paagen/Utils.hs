@@ -1,12 +1,15 @@
 module Paagen.Utils where
 
-import           Control.Exception (Exception)
-import           Control.Monad.Random           (fromList, RandomGen, evalRand, newStdGen, getStdGen)
-import Data.List (nub, elemIndices)
-import SequenceFormats.Eigenstrat
-import           Pipes
-import Pipes.Safe
-import qualified Data.Vector as V
+import                  Paagen.Types 
+
+import                  Control.Exception               (Exception)
+import                  Control.Monad.Random            (fromList, RandomGen, evalRand, newStdGen, getStdGen)
+import                  Data.List
+import                  Data.Ratio                      ((%))   
+import                  SequenceFormats.Eigenstrat
+import                  Pipes
+import                  Pipes.Safe
+import qualified        Data.Vector as V
 
 data PaagenException =
     PaagenCLIParsingException String
@@ -14,6 +17,30 @@ data PaagenException =
 
 instance Exception PaagenException
 
+sampleGenoForMultipleIndWithAdmixtureSet :: [[([Int], Rational)]] -> (EigenstratSnpEntry, GenoLine) -> SafeT IO (EigenstratSnpEntry, GenoLine)
+sampleGenoForMultipleIndWithAdmixtureSet infoForIndividualInd (snpEntry, genoLine) = do
+    entries <- mapM (`sampleGenoForOneIndWithAdmixtureSet` genoLine) infoForIndividualInd
+    return (snpEntry, V.fromList entries)
+
+sampleGenoForOneIndWithAdmixtureSet :: [([Int], Rational)] -> GenoLine -> SafeT IO GenoEntry
+sampleGenoForOneIndWithAdmixtureSet xs genoLine = do
+    gen <- liftIO getStdGen
+    let sampledAllelesPerPop = map (\(x,y) -> (sampleWeightedList gen $ getAlleleFrequencyInPopulation x genoLine, y)) xs
+        sampledAlleleAcrossPops = sampleWeightedList gen sampledAllelesPerPop
+    liftIO newStdGen
+    return sampledAlleleAcrossPops
+
+getAlleleFrequencyInPopulation :: [Int] -> GenoLine -> [(GenoEntry, Rational)]
+getAlleleFrequencyInPopulation individualIndices genoLine =
+    let relevantGenoEntries = [genoLine V.! i | i <- individualIndices]
+    in  if all (Missing ==) relevantGenoEntries
+        then [(Missing, 1)]
+        else calcFractions $ filter (Missing /=) relevantGenoEntries
+
+calcFractions :: Ord a => [a] -> [(a, Rational)]
+calcFractions xs =
+    let ls = toInteger $ length xs
+    in map (\x -> (head x, toInteger (length x) % ls)) $ group $ sort xs
 
 extractFirst :: (a, b, c) -> a
 extractFirst (a,_,_) = a
