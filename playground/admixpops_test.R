@@ -18,8 +18,7 @@ s('trident fetch -d admixpops_test_data -f "*2012_PattersonGenetics*"')
 s('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics -a "[A1:A](French=60+Han=40);[A2:A](French=70+Han=30);[A3:A](French=80+Han=20);[B1:B](French=40+Han=60);[B2:B](French=30+Han=70);[B3:B](French=20+Han=80)" -o admixpops_test_data/hanfrench')
 
 # create data subset
-s('trident init --inFormat EIGENSTRAT --snpSet HumanOrigins --genoFile admixpops_test_data/hanfrench/res.geno --indFile admixpops_test_data/hanfrench/res.ind --snpFile admixpops_test_data/hanfrench/res.snp -o admixpops_test_data/hanfrench_poseidon -n hanfrench_poseidon')
-s('trident forge -d admixpops_test_data/2012_PattersonGenetics -d admixpops_test_data/hanfrench_poseidon -f "A,B,French,Han" -n hanfrench_merged -o admixpops_test_data/hanfrench_merged')
+s('trident forge -d admixpops_test_data/2012_PattersonGenetics -d admixpops_test_data/hanfrench -f "A,B,French,Han" -n hanfrench_merged -o admixpops_test_data/hanfrench_merged')
 
 # mds
 nd("admixpops_test_data/mds")
