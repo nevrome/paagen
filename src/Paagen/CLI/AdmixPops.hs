@@ -14,6 +14,7 @@ import qualified Data.Vector                    as V
 import           Pipes
 import qualified Pipes.Prelude                  as P
 import           Pipes.Safe                     (SafeT (..), runSafeT, throwM)
+import           Poseidon.BibFile
 import           Poseidon.GenotypeData
 import           Poseidon.Janno
 import           Poseidon.Package
@@ -62,11 +63,12 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
     popsFracsInds <- mapM (mapM (`extractIndsPerPop` relevantPackages)) popsWithFracs
     -- compile genotype data structure
     let [outInd, outSnp, outGeno] = case outFormat of
-            GenotypeFormatEigenstrat -> ["res.ind", "res.snp", "res.geno"]
-            GenotypeFormatPlink -> ["res.fam", "res.bim", "res.bed"]
+            GenotypeFormatEigenstrat -> ["admixpops_package.ind", "admixpops_package.snp", "admixpops_package.geno"]
+            GenotypeFormatPlink -> ["admixpops_package.fam", "admixpops_package.bim", "admixpops_package.bed"]
     -- create output directory
     createDirectoryIfMissing True outDir
     -- compile genotype data
+    hPutStrLn stderr "Compiling chimeras"
     runSafeT $ do
         (eigenstratIndEntries, eigenstratProd) <- getJointGenotypeData False False relevantPackages
         let [outG, outS, outI] = map (outDir </>) [outGeno, outSnp, outInd]
@@ -76,6 +78,14 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
                 GenotypeFormatPlink      -> writePlink      outG outS outI newIndEntries
         runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (sampleGenoForMultiplePOIs popsFracsInds) >-> outConsumer
         liftIO $ hPutStrLn stderr "Done"
+    -- complete poseidon package
+    hPutStrLn stderr "Wrapping generated genotype data in a Poseidon package"
+    let genotypeData = GenotypeDataSpec outFormat outGeno Nothing outSnp Nothing outInd Nothing Nothing
+    inds <- loadIndividuals outDir genotypeData
+    pac <- newPackageTemplate outDir "admixpops_package" genotypeData (Just inds) Nothing Nothing
+    writePoseidonPackage pac
+    writeJannoFile (outDir </> "admixpops_package" <.> "janno") $ posPacJanno pac
+    writeBibTeXFile (outDir </> "admixpops_package" <.> "bib") $ posPacBib pac
 
 filterPackagesByPops :: [String] -> [PoseidonPackage] -> IO [PoseidonPackage]
 filterPackagesByPops pops packages = do
