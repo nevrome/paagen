@@ -26,7 +26,9 @@ sampleGenoForOneIndWithAdmixtureSet :: [([Int], Rational)] -> GenoLine -> SafeT 
 sampleGenoForOneIndWithAdmixtureSet xs genoLine = do
     gen <- liftIO getStdGen
     let sampledAllelesPerPop = map (\(x,y) -> (sampleWeightedList gen $ getAlleleFrequencyInPopulation x genoLine, y)) xs
-        sampledAlleleAcrossPops = sampleWeightedList gen sampledAllelesPerPop
+    --liftIO newStdGen -- do I need a second one?
+    --gen <- liftIO getStdGen
+    let sampledAlleleAcrossPops = sampleWeightedList gen sampledAllelesPerPop
     liftIO newStdGen
     return sampledAlleleAcrossPops
 

@@ -8,7 +8,8 @@ import           Control.Exception              (catch, throwIO, Exception)
 import           Control.Monad                  (forM, guard, when)
 import           Control.Monad.Random           (fromList, RandomGen, evalRand, newStdGen, getStdGen)
 import           Data.List                      
-import           Data.Maybe                     
+import           Data.Maybe
+import           Data.Ratio                     ((%))                     
 import qualified Data.Vector                    as V
 import           Pipes
 import qualified Pipes.Prelude                  as P
@@ -25,7 +26,6 @@ import           System.Console.ANSI            (hClearLine, hSetCursorColumn)
 import           System.Directory               (createDirectoryIfMissing)
 import           System.FilePath                ((<.>), (</>))
 import           System.IO                      (hPutStrLn, stderr, hPutStr)
-import Data.Ratio ((%))
 
 data AdmixPopsOptions = AdmixPopsOptions {   
       _admixBaseDirs :: [FilePath]
@@ -53,6 +53,7 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
     let requestedInds = popsWithFracsDirect ++ popsWithFracsFromFile 
         popsWithFracs = map (popFracList . admixSet) requestedInds
         pops = map (map pop) popsWithFracs
+    print requestedInds
     -- when (sum fracs /= 100) $ do
     --     throwIO $ PaagenCLIParsingException "Fractions have to sum to 100%"
     -- load Poseidon packages
@@ -101,11 +102,3 @@ extractIndsPerPop (PopulationWithFraction pop frac) relevantPackages = do
     allIndEntries <- mapM getIndividuals relevantPackages
     let filterFunc (_ , pacName, EigenstratIndEntry ind _ group) = group == pop
     return (map extractFirst $ filter filterFunc (zipGroup allPackageNames allIndEntries), toInteger frac % 100)
-
-weightsPerInd :: [(Int, [Int])] -> ([Int], [Rational])
-weightsPerInd fracAndInds = unzip $ concatMap
-            (\(x,y) -> zipWith3 (\a b c -> (a, b % c)) 
-                y 
-                (replicate (length y) (toInteger x)) 
-                (replicate (length y) (toInteger (length y)))
-            ) fracAndInds

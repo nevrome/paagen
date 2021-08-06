@@ -17,11 +17,11 @@ data IndWithAdmixtureSet = IndWithAdmixtureSet {
       admixInd :: String
     , admixUnit :: String 
     , admixSet :: AdmixtureSet
-}
+} deriving (Show)
 
 data AdmixtureSet = AdmixtureSet {
     popFracList :: [PopulationWithFraction]
-}
+} deriving (Show)
 
 data PopulationWithFraction = PopulationWithFraction {
       pop :: String

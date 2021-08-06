@@ -15,10 +15,10 @@ nd("admixpops_test_data")
 s('trident fetch -d admixpops_test_data -f "*2012_PattersonGenetics*"')
 
 # run admixpops
-s('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics -a "[A1:A](French=60+Han=40);[A2:A](French=70+Han=30);[A3:A](French=80+Han=20);[B1:B](French=40+Han=60);[B2:B](French=30+Han=70);[B3:B](French=20+Han=80)" -o admixpops_test_data/hanfrench')
+s('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics -a "[A1a:A](French=60+Han=40);[A1b:A](French=60+Han=40);[A2a:A](French=70+Han=30);[A2b:A](French=70+Han=30);[A3:A](French=80+Han=20);[C1a:C](French=50+Han=50);[C1b:C](French=50+Han=50);[B1:B](French=40+Han=60);[B2:B](French=30+Han=70);[B3:B](French=20+Han=80)" -o admixpops_test_data/hanfrench')
 
 # create data subset
-s('trident forge -d admixpops_test_data/2012_PattersonGenetics -d admixpops_test_data/hanfrench -f "A,B,French,Han" -n hanfrench_merged -o admixpops_test_data/hanfrench_merged')
+s('trident forge -d admixpops_test_data/2012_PattersonGenetics -d admixpops_test_data/hanfrench -f "A,B,C,French,Han" -n hanfrench_merged -o admixpops_test_data/hanfrench_merged')
 
 # mds
 nd("admixpops_test_data/mds")
