@@ -10,6 +10,8 @@ import                  Pipes
 import                  Pipes.Safe
 import qualified        Data.Vector as V
 
+-- admixpops
+
 sampleGenoForMultipleIndWithAdmixtureSet :: [[([Int], Rational)]] -> (EigenstratSnpEntry, GenoLine) -> SafeT IO (EigenstratSnpEntry, GenoLine)
 sampleGenoForMultipleIndWithAdmixtureSet infoForIndividualInd (snpEntry, genoLine) = do
     entries <- mapM (`sampleGenoForOneIndWithAdmixtureSet` genoLine) infoForIndividualInd
@@ -18,15 +20,19 @@ sampleGenoForMultipleIndWithAdmixtureSet infoForIndividualInd (snpEntry, genoLin
 sampleGenoForOneIndWithAdmixtureSet :: [([Int], Rational)] -> GenoLine -> SafeT IO GenoEntry
 sampleGenoForOneIndWithAdmixtureSet xs genoLine = do
     gen <- liftIO getStdGen
-    let sampledAllelesPerPop = map (\(x,y) -> (sampleWeightedList gen $ getAlleleFrequencyInPopulation x genoLine, y)) xs
+    --liftIO $ putStrLn $ show $ xs
+    --liftIO $ putStrLn $ show $ map (\(x,y) -> (getAlleleFrequency x genoLine, y)) xs
+    let sampledAllelesPerPop = map (\(x,y) -> (sampleWeightedList gen $ getAlleleFrequency x genoLine, y)) xs
+    --liftIO $ putStrLn $ show sampledAllelesPerPop
     --liftIO newStdGen -- do I need a second one?
     --gen <- liftIO getStdGen
     let sampledAlleleAcrossPops = sampleWeightedList gen sampledAllelesPerPop
+    --liftIO $ putStrLn $ show sampledAlleleAcrossPops
     liftIO newStdGen
     return sampledAlleleAcrossPops
 
-getAlleleFrequencyInPopulation :: [Int] -> GenoLine -> [(GenoEntry, Rational)]
-getAlleleFrequencyInPopulation individualIndices genoLine =
+getAlleleFrequency :: [Int] -> GenoLine -> [(GenoEntry, Rational)]
+getAlleleFrequency individualIndices genoLine =
     let relevantGenoEntries = [genoLine V.! i | i <- individualIndices]
     in  if all (Missing ==) relevantGenoEntries
         then [(Missing, 1)]
@@ -36,6 +42,12 @@ calcFractions :: Ord a => [a] -> [(a, Rational)]
 calcFractions xs =
     let ls = toInteger $ length xs
     in map (\x -> (head x, toInteger (length x) % ls)) $ group $ sort xs
+
+sampleWeightedList :: RandomGen g => g -> [(a, Rational)] -> a
+sampleWeightedList gen weights = head $ evalRand m gen
+    where m = sequence . repeat . fromList $ weights
+
+-- spacetime
 
 sampleGenoForMultiplePOIs :: [([Int], [Rational])] -> (EigenstratSnpEntry, GenoLine) -> SafeT IO (EigenstratSnpEntry, GenoLine)
 sampleGenoForMultiplePOIs infoForIndividualPOIs (snpEntry, genoLine) = do
@@ -57,14 +69,10 @@ sampleGenoForOnePOI individualIndices weights genoLine = do
     -- return 
     return selectedGenoEntry
 
-sampleWeightedList :: RandomGen g => g -> [(a, Rational)] -> a
-sampleWeightedList gen weights = head $ evalRand m gen
-    where m = sequence . repeat . fromList $ weights
-
 getGenoIndices :: Eq a => [a] -> [(a, [Int])]
 getGenoIndices xs = 
     let unique = nub xs
-        indices = map (\v -> elemIndices v xs) unique
+        indices = map (`elemIndices` xs) unique
     in  zip unique indices
 
 sumWeights :: Num b => [(a, [Int])] -> [b] -> [(a, b)]
