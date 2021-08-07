@@ -14,7 +14,7 @@ extra-source-files:  README.md,
 
 library
     exposed-modules:    Paagen.Parsers, Paagen.Types, Paagen.Utils, 
-                        Paagen.CLI.SpaceTime, Paagen.CLI.AdmixPops
+                        Paagen.CLI.SpaceTime, Paagen.CLI.AdmixPops, Paagen.SampleGeno
     hs-source-dirs:     src
     build-depends:      poseidon-hs, base, filepath, vector, sequence-formats, 
                         pipes-safe, pipes, MonadRandom, ansi-terminal, directory,

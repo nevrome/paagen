@@ -1,6 +1,7 @@
 module Paagen.CLI.AdmixPops where
 
 import           Paagen.Parsers
+import           Paagen.SampleGeno
 import           Paagen.Types
 import           Paagen.Utils
 
