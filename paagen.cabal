@@ -1,7 +1,8 @@
 name:                paagen
 version:             0.1.0
-synopsis:            ...
-description:         ...
+synopsis:            A package to generate artificial genotype profiles
+description:         Genotype data generation to compile artificial individuals based on input data in the
+  Poseidon format
 license:             MIT
 license-file:        LICENSE
 author:              Clemens Schmid

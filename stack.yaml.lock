@@ -12,15 +12,15 @@ snapshots:
 packages:
 - original:
     git: https://github.com/poseidon-framework/poseidon-hs.git
-    commit: 8c53cc4888896b9c952c0626554d139671bac8c0
+    commit: a15da880bb0092bf5e5ac4c97bb6c6e3e3fdee6c
   completed:
     pantry-tree:
-      sha256: 9528d4a95ddec262f3e2b99444c2660cacaedba396b8f302760565db8ba0db0e
-      size: 6892
-    version: 0.18.1
+      sha256: 0771b9f4ba87d60d234da13abb0666d720d212b9f3e3197cb9413d4bb2dab502
+      size: 11764
+    version: 0.19.0
     git: https://github.com/poseidon-framework/poseidon-hs.git
     name: poseidon-hs
-    commit: 8c53cc4888896b9c952c0626554d139671bac8c0
+    commit: a15da880bb0092bf5e5ac4c97bb6c6e3e3fdee6c
 - original:
     hackage: table-layout-0.9.1.0
   completed:
@@ -49,27 +49,6 @@ packages:
       sha256: edd7d1c004e05008b7c7ddb24845d6d769c508a09906623c65d5914e4ee2dbdf
       size: 386
     hackage: yaml-pretty-extras-0.0.2.2@sha256:9e7fefdf4146e84ad11856daa990f5a1b8d1ac2c6dbc0a76913f67480547d4d0,2728
-- original:
-    hackage: pandoc-citeproc-0.17.0.2
-  completed:
-    pantry-tree:
-      sha256: 8a5f6398d750902d79c215a4c8f85c74f3e7ea572dd1f950d57e784669ac7a48
-      size: 25684
-    hackage: pandoc-citeproc-0.17.0.2@sha256:39c5c60a5eca2c1cb50ae9a00dc7093ca1baac78ad5be4e222505de257dce456,8737
-- original:
-    hackage: pandoc-2.10.1
-  completed:
-    pantry-tree:
-      sha256: 08c8b20356152b9ee8161bacafda2dc1bed13d7db4cbf38ab040c1977b2d28d5
-      size: 89646
-    hackage: pandoc-2.10.1@sha256:23d7ec480c7cb86740475a419d6ca4819987b6dd23bbae9b50bc3d42a7ed2f9f,36933
-- original:
-    hackage: pandoc-types-1.21
-  completed:
-    pantry-tree:
-      sha256: e26eb93747538e29168032985a03b428039a16000fea1a4a8d9b9b032ac98b5f
-      size: 713
-    hackage: pandoc-types-1.21@sha256:b61ed625da4d1a0d8057fcca4c0c5e174c9f45d94b41504db1532f3fc581e945,4037
 - original:
     hackage: commonmark-0.1.1.3
   completed:

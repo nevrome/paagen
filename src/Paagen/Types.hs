@@ -8,9 +8,6 @@ module Paagen.Types (
 ) where
 
 import           Poseidon.Janno
-import           Poseidon.Package
-import           Poseidon.GenotypeData
-
 import           SequenceFormats.Eigenstrat     (GenoEntry (..))
 
 data IndWithAdmixtureSet = IndWithAdmixtureSet {
