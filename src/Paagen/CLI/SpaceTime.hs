@@ -14,6 +14,7 @@ import qualified Data.Vector                    as V
 import           Pipes
 import qualified Pipes.Prelude                  as P
 import           Pipes.Safe                     (SafeT (..), runSafeT, throwM)
+import           Poseidon.BibFile
 import           Poseidon.GenotypeData
 import           Poseidon.Janno
 import           Poseidon.Package
@@ -22,6 +23,7 @@ import           SequenceFormats.Eigenstrat     (EigenstratIndEntry (..),
                                                 writeEigenstrat)
 import           SequenceFormats.Plink          (writePlink)
 import           System.Console.ANSI            (hClearLine, hSetCursorColumn)
+import           System.Directory               (createDirectoryIfMissing)
 import           System.FilePath                ((<.>), (</>))
 import           System.IO                      (hPutStrLn, stderr, hPutStr)
 
@@ -72,8 +74,10 @@ runSpaceTime (SpaceTimeOptions baseDirs poisDirect poisFile numNeighbors tempora
     let infoForIndividualPOIs = zip closestIndices closestWeights
     -- compile genotype data structure
     let [outInd, outSnp, outGeno] = case outFormat of
-            GenotypeFormatEigenstrat -> ["res.ind", "res.snp", "res.geno"]
-            GenotypeFormatPlink -> ["res.fam", "res.bim", "res.bed"]
+            GenotypeFormatEigenstrat -> ["spacetime_package.ind", "spacetime_package.snp", "spacetime_package.geno"]
+            GenotypeFormatPlink -> ["spacetime_package.fam", "spacetime_package.bim", "spacetime_package.bed"]
+    -- create output directory
+    createDirectoryIfMissing True outDir
     -- compile genotype data
     runSafeT $ do
         (eigenstratIndEntries, eigenstratProd) <- getJointGenotypeData False False relevantPackages
@@ -84,6 +88,14 @@ runSpaceTime (SpaceTimeOptions baseDirs poisDirect poisFile numNeighbors tempora
                 GenotypeFormatPlink      -> writePlink      outG outS outI newIndEntries
         runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (sampleGenoForMultiplePOIs infoForIndividualPOIs) >-> outConsumer
         liftIO $ hPutStrLn stderr "Done"
+    -- complete poseidon package
+    hPutStrLn stderr "Wrapping generated genotype data in a Poseidon package"
+    let genotypeData = GenotypeDataSpec outFormat outGeno Nothing outSnp Nothing outInd Nothing Nothing
+    inds <- loadIndividuals outDir genotypeData
+    pac <- newPackageTemplate outDir "spacetime_package" genotypeData (Just inds) Nothing Nothing
+    writePoseidonPackage pac
+    writeJannoFile (outDir </> "spacetime_package" <.> "janno") $ posPacJanno pac
+    writeBibTeXFile (outDir </> "spacetime_package" <.> "bib") $ posPacBib pac
 
 jannoToSpaceTimePos :: [JannoRow] -> [IndWithPosition]
 jannoToSpaceTimePos jannos =

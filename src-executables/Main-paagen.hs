@@ -56,7 +56,7 @@ optParser = OP.subparser (
     spaceTimeOptInfo = OP.info (OP.helper <*> (CmdSpaceTime <$> spaceTimeOptParser))
         (OP.progDesc "Genotype profile generation based on spatiotemporal position")
     admixPopsOptInfo = OP.info (OP.helper <*> (CmdAdmixPops <$> admixPopsOptParser))
-        (OP.progDesc "Genotype profile generation based on population proportions")
+        (OP.progDesc "Genotype profile generation based on admixture proportions")
 
 spaceTimeOptParser :: OP.Parser SpaceTimeOptions
 spaceTimeOptParser = SpaceTimeOptions <$> parseBasePaths

@@ -109,26 +109,23 @@ ggplot() +
   ) +
   geom_text(data = poi_grid, aes(x = lon, y = lat, color = group, label = ind))
 
-nd("spacetime_test_data/poi")
+dd("spacetime_test_data/poi")
 s(paste0('paagen spacetime -d spacetime_test_data/pat -p "', poi_string, '" --neighbors 100 -o spacetime_test_data/poi --outFormat EIGENSTRAT'))
 
-dd("spacetime_test_data/poi_poseidon")
-s('trident init --inFormat EIGENSTRAT --genoFile spacetime_test_data/poi/poi.geno --snpFile spacetime_test_data/poi/poi.snp --indFile spacetime_test_data/poi/poi.ind -o spacetime_test_data/poi_poseidon -n poi')
-
 dd("spacetime_test_data/merged")
-s('trident forge -d spacetime_test_data/pat -d spacetime_test_data/poi_poseidon -f "*pat*,*poi*" -o spacetime_test_data/merged -n merged')
+s('trident forge -d spacetime_test_data/pat -d spacetime_test_data/poi -f "*pat*,*spacetime_package*" -o spacetime_test_data/merged -n merged')
 
 # pruning
-nd("spacetime_test_data/merged_pruned")
-s('plink1.9 --bfile spacetime_test_data/merged/merged --exclude spacetime_test_data/myrange.txt --range --maf --make-bed --out spacetime_test_data/merged_pruned/merged.pruned')
+# nd("spacetime_test_data/merged_pruned")
+# s('plink1.9 --bfile spacetime_test_data/merged/merged --exclude spacetime_test_data/myrange.txt --range --maf --make-bed --out spacetime_test_data/merged_pruned/merged.pruned')
 
 # generate general pairwise stats
-nd("spacetime_test_data/merge_pruned_distances")
-s('plink1.9 --bfile spacetime_test_data/merged_pruned/merged.pruned --genome --out spacetime_test_data/merge_pruned_distances/merged.pruned')
+nd("spacetime_test_data/merge_distances")
+s('plink1.9 --bfile spacetime_test_data/merged/merged --genome --out spacetime_test_data/merge_distances/merged')
 
 # create mds table
 nd("spacetime_test_data/mds")
-s('plink1.9 --bfile spacetime_test_data/merged_pruned/merged.pruned --cluster --mds-plot 2 --read-genome spacetime_test_data/merge_pruned_distances/merged.pruned.genome --out spacetime_test_data/mds/mds')
+s('plink1.9 --bfile spacetime_test_data/merged/merged --cluster --mds-plot 2 --read-genome spacetime_test_data/merge_distances/merged.genome --out spacetime_test_data/mds/mds')
 
 mds_raw <- readr::read_delim(
         "spacetime_test_data/mds/mds.mds", " ", trim_ws = T,
@@ -164,9 +161,6 @@ head(input_spatpos_grouped)
 
 head(input_grid)
 
-library(ggplot2)
-options(repr.plot.width = 20, repr.plot.height = 7, repr.plot.res = 300)
-
 ggplot() +
-ggpointgrid::geom_textgrid(data = input_grid, aes(x = C1, y = C2, color = group, label = ind), size = 7) +
-ggpointgrid::geom_textgrid(data = input_spatpos_grouped, aes(x = C1, y = C2, label = FID))
+  ggpointgrid::geom_textgrid(data = input_grid, aes(x = C1, y = C2, color = group, label = ind), size = 3) +
+  ggpointgrid::geom_textgrid(data = input_spatpos_grouped, aes(x = C1, y = C2, label = FID))
