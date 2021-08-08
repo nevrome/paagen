@@ -3,3 +3,4 @@ docs/_build/
 .ipynb_checkpoints/
 playground/data/
 playground/admixpops_test_data/
+.Rhistory
