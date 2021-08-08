@@ -1,6 +1,6 @@
 docs/_build/
 .stack-work/
 .ipynb_checkpoints/
-playground/data/
+playground/spacetime_test_data/
 playground/admixpops_test_data/
 .Rhistory
