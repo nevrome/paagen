@@ -1,14 +1,4 @@
-# helper functions
-s <- function(x, o = T, e = F) {
-    redir <- if (e) { "2>&1" } else { "" }
-    res <- system(paste(x, redir), intern=TRUE, ignore.stdout = !o)
-    if (length(res) > 1) { cat(res, sep='\n') }
-}
-dd <- function(x) { unlink(x, recursive = T) }
-nd <- function(x) {
-    unlink(x, recursive = T)
-    dir.create(x)
-}
+source("technical_helpers.R")
 
 library(magrittr)
 

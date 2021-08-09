@@ -1,21 +1,11 @@
-# helper functions
-s <- function(x, o = T, e = F) {
-  redir <- if (e) { "2>&1" } else { "" }
-  res <- system(paste(x, redir), intern=TRUE, ignore.stdout = !o)
-  if (length(res) > 1) { cat(res, sep='\n') }
-}
-dd <- function(x) { unlink(x, recursive = T) }
-nd <- function(x) {
-  unlink(x, recursive = T)
-  dir.create(x)
-}
+source("technical_helpers.R")
 
 # prepare data
 nd("admixpops_test_data")
 s('trident fetch -d admixpops_test_data -f "*2012_PattersonGenetics*"')
 
 # run admixpops
-s('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics -a "[1:A](French=60+Han=40);[2:A](French=60+Han=40);[3:A](French=70+Han=30);[4:A](French=70+Han=30);[5:A](French=80+Han=20);[6:C](French=50+Han=50);[7:C](French=50+Han=50);[8:B](French=40+Han=60);[9:B](French=30+Han=70);[10:B](French=20+Han=80)" -o admixpops_test_data/hanfrench')
+s('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics -a "[1:A](French=90+Han=10);[2:A](French=80+Han=20);[3:A](French=70+Han=30);[4:A](French=60+Han=40);[5:C](French=50+Han=50);[6:B](French=40+Han=60);[7:B](French=30+Han=70);[8:B](French=20+Han=80);[8:B](French=10+Han=90)" -o admixpops_test_data/hanfrench')
 
 # create data subset
 s('trident forge -d admixpops_test_data/2012_PattersonGenetics -d admixpops_test_data/hanfrench -f "A,B,C,French,Han" -n hanfrench_merged -o admixpops_test_data/hanfrench_merged')
