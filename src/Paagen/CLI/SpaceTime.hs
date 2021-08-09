@@ -5,27 +5,21 @@ import           Paagen.SampleGeno
 import           Paagen.Types
 import           Paagen.Utils
 
-import           Control.Exception              (catch, throwIO, Exception)
-import           Control.Monad                  (forM, guard)
-import           Control.Monad.Random           (newStdGen, getStdGen)
-import           Data.List                      (nub, tails, sortBy, intersect, maximumBy, group, sort, intercalate, elemIndex, elemIndices, unfoldr)
-import           Data.Maybe                     (isJust, fromMaybe, catMaybes, fromJust)
-import qualified Data.Vector                    as V
+import           Control.Monad                  (forM)
+import           Data.List                      (nub, sortBy, intersect)
+import           Data.Maybe                     (isJust, fromMaybe, catMaybes)
 import           Pipes
 import qualified Pipes.Prelude                  as P
-import           Pipes.Safe                     (SafeT (..), runSafeT, throwM)
+import           Pipes.Safe                     (runSafeT)
 import           Poseidon.BibFile
 import           Poseidon.GenotypeData
 import           Poseidon.Janno
 import           Poseidon.Package
-import           SequenceFormats.Eigenstrat     (EigenstratIndEntry (..),
-                                                EigenstratSnpEntry (..), GenoLine,
-                                                writeEigenstrat)
+import           SequenceFormats.Eigenstrat     (EigenstratIndEntry (..), writeEigenstrat)
 import           SequenceFormats.Plink          (writePlink)
-import           System.Console.ANSI            (hClearLine, hSetCursorColumn)
 import           System.Directory               (createDirectoryIfMissing)
 import           System.FilePath                ((<.>), (</>))
-import           System.IO                      (hPutStrLn, stderr, hPutStr)
+import           System.IO                      (hPutStrLn, stderr)
 
 data SpaceTimeOptions = SpaceTimeOptions {   
       _spatBaseDirs :: [FilePath]
@@ -80,7 +74,7 @@ runSpaceTime (SpaceTimeOptions baseDirs poisDirect poisFile numNeighbors tempora
     createDirectoryIfMissing True outDir
     -- compile genotype data
     runSafeT $ do
-        (eigenstratIndEntries, eigenstratProd) <- getJointGenotypeData False False relevantPackages
+        (_, eigenstratProd) <- getJointGenotypeData False False relevantPackages
         let [outG, outS, outI] = map (outDir </>) [outGeno, outSnp, outInd]
             newIndEntries = map (\x -> EigenstratIndEntry (spatInd x) Unknown (spatUnit x)) pois
         let outConsumer = case outFormat of
@@ -119,7 +113,7 @@ spatioTemporalDistance
     (SpatialTemporalPosition t2 (Latitude lat2) (Longitude lon2)) =
     let tDist = fromIntegral (abs (t1 - t2)) * scaling
         sDist = haversineDist (lat1, lon1) (lat2, lon2)
-    in sqrt $ tDist^2 + sDist^2
+    in sqrt $ tDist^(2 :: Integer) + sDist^(2 :: Integer)
 
 haversineDist :: (Double, Double) -> (Double, Double) -> Double 
 haversineDist (lat1, lon1) (lat2, lon2) =
@@ -163,5 +157,5 @@ extractIndIndices :: [String] -> [PoseidonPackage] -> IO [Int]
 extractIndIndices indNames relevantPackages = do
     let allPackageNames = map posPacTitle relevantPackages
     allIndEntries <- mapM getIndividuals relevantPackages
-    let filterFunc (_ , pacName, EigenstratIndEntry ind _ group) = ind `elem` indNames
+    let filterFunc (_,_,EigenstratIndEntry ind _ _) = ind `elem` indNames
     return $ map extractFirst $ filter filterFunc (zipGroup allPackageNames allIndEntries)

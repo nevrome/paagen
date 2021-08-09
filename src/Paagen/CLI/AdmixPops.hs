@@ -5,28 +5,22 @@ import           Paagen.SampleGeno
 import           Paagen.Types
 import           Paagen.Utils
 
-import           Control.Exception              (catch, throwIO, Exception)
-import           Control.Monad                  (forM, guard, when)
-import           Control.Monad.Random           (fromList, RandomGen, evalRand, newStdGen, getStdGen)
+import           Control.Monad                  (forM)
 import           Data.List                      
 import           Data.Maybe
 import           Data.Ratio                     ((%))                     
-import qualified Data.Vector                    as V
 import           Pipes
 import qualified Pipes.Prelude                  as P
-import           Pipes.Safe                     (SafeT (..), runSafeT, throwM)
+import           Pipes.Safe                     (runSafeT)
 import           Poseidon.BibFile
 import           Poseidon.GenotypeData
 import           Poseidon.Janno
 import           Poseidon.Package
-import           SequenceFormats.Eigenstrat     (EigenstratIndEntry (..),
-                                                EigenstratSnpEntry (..), GenoLine,
-                                                writeEigenstrat)
+import           SequenceFormats.Eigenstrat     (EigenstratIndEntry (..), writeEigenstrat)
 import           SequenceFormats.Plink          (writePlink)
-import           System.Console.ANSI            (hClearLine, hSetCursorColumn)
 import           System.Directory               (createDirectoryIfMissing)
 import           System.FilePath                ((<.>), (</>))
-import           System.IO                      (hPutStrLn, stderr, hPutStr)
+import           System.IO                      (hPutStrLn, stderr)
 
 data AdmixPopsOptions = AdmixPopsOptions {   
       _admixBaseDirs :: [FilePath]
@@ -71,7 +65,7 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
     -- compile genotype data
     hPutStrLn stderr "Compiling chimeras"
     runSafeT $ do
-        (eigenstratIndEntries, eigenstratProd) <- getJointGenotypeData False False relevantPackages
+        (_, eigenstratProd) <- getJointGenotypeData False False relevantPackages
         let [outG, outS, outI] = map (outDir </>) [outGeno, outSnp, outInd]
             newIndEntries = map (\x -> EigenstratIndEntry (admixInd x) Unknown (admixUnit x)) requestedInds
         let outConsumer = case outFormat of
@@ -92,14 +86,14 @@ filterPackagesByPops :: [String] -> [PoseidonPackage] -> IO [PoseidonPackage]
 filterPackagesByPops pops packages = do
     fmap catMaybes . forM packages $ \pac -> do
         inds <- getIndividuals pac
-        let groupNamesPac = [group | EigenstratIndEntry _   _ group <- inds]
+        let groupNamesPac = [groupName | EigenstratIndEntry _ _ groupName <- inds]
         if   not (null (groupNamesPac `intersect` pops))
         then return (Just pac)
         else return Nothing
 
 extractIndsPerPop :: PopulationWithFraction -> [PoseidonPackage] -> IO ([Int], Rational)
-extractIndsPerPop (PopulationWithFraction pop frac) relevantPackages = do
+extractIndsPerPop (PopulationWithFraction _pop _frac) relevantPackages = do
     let allPackageNames = map posPacTitle relevantPackages
     allIndEntries <- mapM getIndividuals relevantPackages
-    let filterFunc (_ , pacName, EigenstratIndEntry ind _ group) = group == pop
-    return (map extractFirst $ filter filterFunc (zipGroup allPackageNames allIndEntries), toInteger frac % 100)
+    let filterFunc (_,_,EigenstratIndEntry _ _ _group) = _group == _pop
+    return (map extractFirst $ filter filterFunc (zipGroup allPackageNames allIndEntries), toInteger _frac % 100)

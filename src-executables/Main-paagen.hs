@@ -3,19 +3,12 @@
 import           Paths_paagen                   (version)
 import           Paagen.Parsers
 import           Paagen.Types
-import           Paagen.CLI.SpaceTime           (runSpaceTime, 
-                                                 SpaceTimeOptions (..))
-import           Paagen.CLI.AdmixPops           (runAdmixPops,
-                                                 AdmixPopsOptions (..))
-import           Poseidon.GenotypeData
+import           Paagen.CLI.SpaceTime           (runSpaceTime, SpaceTimeOptions (..))
+import           Paagen.CLI.AdmixPops           (runAdmixPops, AdmixPopsOptions (..))
 
-import           Control.Applicative            ((<|>))
-import           Data.Char                      (isSpace)
-import           Data.Function                  (on)
 import           Data.Version                   (showVersion)
 import qualified Options.Applicative            as OP
-import           System.Exit                    (exitFailure)
-import Control.Exception (SomeException(SomeException))
+import           Poseidon.GenotypeData
 
 -- data types
 
@@ -67,6 +60,7 @@ spaceTimeOptParser = SpaceTimeOptions <$> parseBasePaths
                                       <*> parseOutGenotypeFormat
                                       <*> parseOutPath
 
+admixPopsOptParser :: OP.Parser AdmixPopsOptions
 admixPopsOptParser = AdmixPopsOptions <$> parseBasePaths
                                       <*> parseIndWithAdmixtureSetDirect
                                       <*> parseIndWithAdmixtureSetFromFile

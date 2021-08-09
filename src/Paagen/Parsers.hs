@@ -30,22 +30,22 @@ indWithAdmixtureSetMultiParser = P.try (P.sepBy parseIndWithAdmixtureSet (P.char
 parseIndWithAdmixtureSet :: P.Parser IndWithAdmixtureSet
 parseIndWithAdmixtureSet = do
     _ <- P.oneOf "["
-    ind <- P.manyTill P.anyChar (P.string ":")
-    unit <- P.manyTill P.anyChar (P.string "]")
+    indP <- P.manyTill P.anyChar (P.string ":")
+    unitP <- P.manyTill P.anyChar (P.string "]")
     _ <- P.oneOf "("
-    admixSet <- populationWithFractionMultiParser
+    setP <- populationWithFractionMultiParser
     _ <- P.oneOf ")"
-    return (IndWithAdmixtureSet ind unit (AdmixtureSet admixSet))
+    return (IndWithAdmixtureSet indP unitP (AdmixtureSet setP))
 
 populationWithFractionMultiParser :: P.Parser [PopulationWithFraction]
 populationWithFractionMultiParser = P.try (P.sepBy parsePopulationWithFraction (P.char '+' <* P.spaces))
 
 parsePopulationWithFraction :: P.Parser PopulationWithFraction
 parsePopulationWithFraction = do
-    pop <- P.many (P.noneOf "=")
+    popP <- P.many (P.noneOf "=")
     _ <- P.oneOf "="
-    frac <- read <$> P.many1 P.digit
-    return (PopulationWithFraction pop frac)
+    fracP <- read <$> P.many1 P.digit
+    return (PopulationWithFraction popP fracP)
 
 readIndWithPositionString :: String -> Either String [IndWithPosition]
 readIndWithPositionString s = case P.runParser indWithPositionParser () "" s of
@@ -75,24 +75,24 @@ parseIndWithPosition = do
 
 parseSpatialTemporalPosition :: P.Parser SpatialTemporalPosition
 parseSpatialTemporalPosition = do
-    time <- pInt
+    timeP <- pInt
     _ <- P.oneOf ","
-    lat <- pLat
+    latP <- pLat
     _ <- P.oneOf ","
-    lon <- pLon
-    return (SpatialTemporalPosition time lat lon)
+    lonP <- pLon
+    return (SpatialTemporalPosition timeP latP lonP)
 
 pInt :: P.Parser Int
 pInt = read <$> P.many1 P.digit
 
 pLat :: P.Parser Latitude 
 pLat = do
-    lat <- P.sign <*> P.floating2 True
-    guard (lat >= -90 && lat <= 90) P.<?> "valid latitude (-90 to 90)"
-    return (Latitude lat)
+    latP <- P.sign <*> P.floating2 True
+    guard (latP >= -90 && latP <= 90) P.<?> "valid latitude (-90 to 90)"
+    return (Latitude latP)
 
 pLon :: P.Parser Longitude
 pLon = do
-    lon <- P.sign <*> P.floating2 True
-    guard (lon >= -180 && lon <= 180) P.<?> "valid longitude (-180 to 180)"
-    return (Longitude lon)
+    lonP <- P.sign <*> P.floating2 True
+    guard (lonP >= -180 && lonP <= 180) P.<?> "valid longitude (-180 to 180)"
+    return (Longitude lonP)

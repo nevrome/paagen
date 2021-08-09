@@ -28,7 +28,7 @@ sampleGenoForOneIndWithAdmixtureSet xs genoLine = do
     --gen <- liftIO getStdGen
     let sampledAlleleAcrossPops = sampleWeightedList gen sampledAllelesPerPop
     --liftIO $ putStrLn $ show sampledAlleleAcrossPops
-    liftIO newStdGen
+    _ <- liftIO newStdGen
     return sampledAlleleAcrossPops
 
 getAlleleFrequency :: [Int] -> GenoLine -> [(GenoEntry, Rational)]
@@ -82,7 +82,7 @@ sampleGenoForOnePOI individualIndices weights genoLine = do
     gen <- liftIO getStdGen
     -- liftIO $ hPutStrLn stderr (show gen)
     let selectedGenoEntry = sampleWeightedList gen weightsPerGenoEntry
-    liftIO newStdGen
+    _ <- liftIO newStdGen
     -- return 
     return selectedGenoEntry
 
@@ -96,4 +96,4 @@ sumWeights :: Num b => [(a, [Int])] -> [b] -> [(a, b)]
 sumWeights xs weights = map (\(x, ys) -> (x, sum $ subset ys weights)) xs
     where
         subset :: [Int] -> [a] -> [a]
-        subset indices xs = [xs !! i | i <- indices]
+        subset indices ys = [ys !! i | i <- indices]
