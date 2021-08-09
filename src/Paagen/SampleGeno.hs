@@ -38,10 +38,27 @@ getAlleleFrequency individualIndices genoLine =
         then [(Missing, 1)]
         else calcFractions $ filter (Missing /=) relevantGenoEntries
 
-calcFractions :: Ord a => [a] -> [(a, Rational)]
+calcFractions :: [GenoEntry] -> [(GenoEntry, Rational)]
 calcFractions xs =
     let ls = toInteger $ length xs
-    in map (\x -> (head x, toInteger (length x) % ls)) $ group $ sort xs
+    in map (\x -> (head x, toInteger (length x) % ls)) $ group $ sortBy compareGenoEntry xs
+
+compareGenoEntry :: GenoEntry -> GenoEntry -> Ordering
+compareGenoEntry Het x = case x of
+    Het     -> EQ
+    _       -> LT
+compareGenoEntry HomRef x = case x of
+    Het     -> GT
+    HomRef  -> EQ
+    _       -> LT
+compareGenoEntry HomAlt x = case x of
+    Het     -> GT
+    HomRef  -> GT
+    HomAlt  -> EQ
+    _       -> LT
+compareGenoEntry Missing x = case x of
+    Missing -> EQ
+    _       -> GT
 
 sampleWeightedList :: RandomGen g => g -> [(a, Rational)] -> a
 sampleWeightedList gen weights = head $ evalRand m gen

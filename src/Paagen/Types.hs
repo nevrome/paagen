@@ -36,20 +36,3 @@ data SpatialTemporalPosition = SpatialTemporalPosition {
     , lat :: Latitude 
     , lon :: Longitude
 } deriving (Show)
-
-instance Ord GenoEntry where
-    compare Het x = case x of
-        Het     -> EQ
-        _       -> LT
-    compare HomRef x = case x of
-        Het     -> GT
-        HomRef  -> EQ
-        _       -> LT
-    compare HomAlt x = case x of
-        Het     -> GT
-        HomRef  -> GT
-        HomAlt  -> EQ
-        _       -> LT
-    compare Missing x = case x of
-        Missing -> EQ
-        _       -> GT
