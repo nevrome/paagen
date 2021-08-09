@@ -5,7 +5,7 @@ import           Paagen.SampleGeno
 import           Paagen.Types
 import           Paagen.Utils
 
-import           Control.Monad                  (forM, when)
+import           Control.Monad                  (forM, when, unless)
 import           Data.List                      
 import           Data.Maybe
 import           Data.Ratio                     ((%))                     
@@ -53,6 +53,11 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
     mapM_ (hPrint stderr) (take 5 requestedInds)
     when (length requestedInds > 5) $ do
         hPutStrLn stderr "..."
+    -- validating input
+    let individualsGrouped = filter (\x -> length x > 1) $ group $ sort $ map admixInd requestedInds
+    unless (null individualsGrouped) $ do
+                throwIO $ PaagenCLIParsingException $
+                    "Duplicate individual names: " ++ intercalate "," (nub $ concat individualsGrouped)
     mapM_ checkIndsWithAdmixtureSets requestedInds
     -- load Poseidon packages
     allPackages <- readPoseidonPackageCollection pacReadOpts baseDirs
@@ -86,7 +91,7 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
     writeBibTeXFile (outDir </> "admixpops_package" <.> "bib") $ posPacBib pac
 
 checkIndsWithAdmixtureSets :: IndWithAdmixtureSet -> IO ()
-checkIndsWithAdmixtureSets cur@(IndWithAdmixtureSet _ _ (AdmixtureSet _popFracList)) =
+checkIndsWithAdmixtureSets cur@(IndWithAdmixtureSet _ _ (AdmixtureSet _popFracList)) = do
     checkPopFracList _popFracList
     where
         checkPopFracList :: [PopulationWithFraction] -> IO ()
