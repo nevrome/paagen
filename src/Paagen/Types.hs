@@ -7,6 +7,7 @@ module Paagen.Types (
     GenoEntry (..)
 ) where
 
+import           Data.List                      (intercalate)
 import           Poseidon.Janno
 import           SequenceFormats.Eigenstrat     (GenoEntry (..))
 
@@ -14,7 +15,12 @@ data IndWithAdmixtureSet = IndWithAdmixtureSet {
       admixInd :: String
     , admixUnit :: String 
     , admixSet :: AdmixtureSet
-} deriving (Show)
+}
+
+instance Show IndWithAdmixtureSet where
+    show (IndWithAdmixtureSet _admixInd _admixUnit (AdmixtureSet _popFracList)) = 
+        "[" ++ _admixInd ++ ":" ++ _admixUnit ++ "]" ++
+        "(" ++ intercalate "+" (map show _popFracList) ++ ")"
 
 data AdmixtureSet = AdmixtureSet {
     popFracList :: [PopulationWithFraction]
@@ -23,7 +29,11 @@ data AdmixtureSet = AdmixtureSet {
 data PopulationWithFraction = PopulationWithFraction {
       pop :: String
     , frac :: Int
-} deriving (Show)
+}
+
+instance Show PopulationWithFraction where
+    show (PopulationWithFraction _pop _frac) = 
+        _pop ++ "=" ++ show _frac
 
 data IndWithPosition = IndWithPosition {
       spatInd :: String

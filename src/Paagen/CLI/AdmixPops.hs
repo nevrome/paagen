@@ -5,7 +5,7 @@ import           Paagen.SampleGeno
 import           Paagen.Types
 import           Paagen.Utils
 
-import           Control.Monad                  (forM)
+import           Control.Monad                  (forM, when)
 import           Data.List                      
 import           Data.Maybe
 import           Data.Ratio                     ((%))                     
@@ -20,7 +20,8 @@ import           SequenceFormats.Eigenstrat     (EigenstratIndEntry (..), writeE
 import           SequenceFormats.Plink          (writePlink)
 import           System.Directory               (createDirectoryIfMissing)
 import           System.FilePath                ((<.>), (</>))
-import           System.IO                      (hPutStrLn, stderr)
+import           System.IO                      (hPutStrLn, stderr, hPrint)
+import Control.Exception (throwIO)
 
 data AdmixPopsOptions = AdmixPopsOptions {   
       _admixBaseDirs :: [FilePath]
@@ -48,9 +49,9 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
     let requestedInds = popsWithFracsDirect ++ popsWithFracsFromFile 
         popsWithFracs = map (popFracList . admixSet) requestedInds
         pops = map (map pop) popsWithFracs
-    print requestedInds
-    -- when (sum fracs /= 100) $ do
-    --     throwIO $ PaagenCLIParsingException "Fractions have to sum to 100%"
+    hPutStrLn stderr "The first 10 chimeras to construct:"
+    mapM_ (hPrint stderr) (take 10 requestedInds)
+    mapM_ checkIndsWithAdmixtureSets requestedInds
     -- load Poseidon packages
     allPackages <- readPoseidonPackageCollection pacReadOpts baseDirs
     -- determine relevant packages and indices
@@ -81,6 +82,17 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
     writePoseidonPackage pac
     writeJannoFile (outDir </> "admixpops_package" <.> "janno") $ posPacJanno pac
     writeBibTeXFile (outDir </> "admixpops_package" <.> "bib") $ posPacBib pac
+
+checkIndsWithAdmixtureSets :: IndWithAdmixtureSet -> IO ()
+checkIndsWithAdmixtureSets cur@(IndWithAdmixtureSet _ _ (AdmixtureSet _popFracList)) =
+    checkPopFracList _popFracList
+    where
+        checkPopFracList :: [PopulationWithFraction] -> IO ()
+        checkPopFracList xs = do
+            let fracs = map frac xs
+            when (sum fracs /= 100) $ do
+                throwIO $ PaagenCLIParsingException $
+                    "Fractions in " ++ show cur ++ " do not to sum to 100%"
 
 filterPackagesByPops :: [String] -> [PoseidonPackage] -> IO [PoseidonPackage]
 filterPackagesByPops pops packages = do
