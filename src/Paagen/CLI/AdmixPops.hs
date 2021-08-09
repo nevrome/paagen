@@ -49,8 +49,10 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
     let requestedInds = popsWithFracsDirect ++ popsWithFracsFromFile 
         popsWithFracs = map (popFracList . admixSet) requestedInds
         pops = map (map pop) popsWithFracs
-    hPutStrLn stderr "The first 10 chimeras to construct:"
-    mapM_ (hPrint stderr) (take 10 requestedInds)
+    hPutStrLn stderr "Checking chimeras"
+    mapM_ (hPrint stderr) (take 5 requestedInds)
+    when (length requestedInds > 5) $ do
+        hPutStrLn stderr "..."
     mapM_ checkIndsWithAdmixtureSets requestedInds
     -- load Poseidon packages
     allPackages <- readPoseidonPackageCollection pacReadOpts baseDirs
