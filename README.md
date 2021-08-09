@@ -1,6 +1,8 @@
-# paagen: Poseidon artificial ancestry generator
+[![GitHub Workflow Status](https://github.com/nevrome/paagen/actions/workflows/normalCheck.yml/badge.svg)](https://github.com/nevrome/paagen/actions/workflows/normalCheck.yml)
 
-This is an experimental CLI application to generate artificial genotype data for (ancient) human individuals. It requires input data in the [Poseidon format](https://poseidon-framework.github.io/#/).
+# paagen
+
+The **P**oseidon **a**rtificial **a**ncestry **gen**erator (paagen) is an experimental CLI application written in [Haskell](https://www.haskell.org/) to generate artificial genotype data for (ancient) human individuals. It requires input data in the [Poseidon format](https://poseidon-framework.github.io/#/).
 
 ### Subcommands
 
