@@ -4,8 +4,8 @@ source("technical_helpers.R")
 nd("admixpops_test_data")
 s('trident fetch -d admixpops_test_data -f "*2012_PattersonGenetics*"')
 
-ind_admixpops <- partitions::compositions(n = 5, m = 2, include.zero = T) |>
-  {\(x) x*20}() |>
+ind_admixpops <- partitions::compositions(n = 10, m = 2, include.zero = T) |>
+  {\(x) x*10}() |>
   as.matrix() |>
   t() |>
   tibble::as_tibble() |>

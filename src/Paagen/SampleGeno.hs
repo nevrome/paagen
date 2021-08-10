@@ -21,18 +21,18 @@ sampleGenoForOneIndWithAdmixtureSet :: [([Int], Rational)] -> GenoLine -> SafeT 
 sampleGenoForOneIndWithAdmixtureSet xs genoLine = do
     gen <- liftIO getStdGen
     --liftIO $ putStrLn $ show $ xs
-    --liftIO $ putStrLn $ show $ map (\(x,y) -> (getAlleleFrequency x genoLine, y)) xs
-    let sampledAllelesPerPop = map (\(x,y) -> (sampleWeightedList gen $ getAlleleFrequency x genoLine, y)) xs
-    --liftIO $ putStrLn $ show sampledAllelesPerPop
+    --liftIO $ putStrLn $ show $ map (\(x,y) -> (getGenotypeFrequency x genoLine, y)) xs
+    let sampledGenotypesPerPop = map (\(x,y) -> (sampleWeightedList gen $ getGenotypeFrequency x genoLine, y)) xs
+    --liftIO $ putStrLn $ show sampledGenotypesPerPop
     --liftIO newStdGen -- do I need a second one?
     --gen <- liftIO getStdGen
-    let sampledAlleleAcrossPops = sampleWeightedList gen sampledAllelesPerPop
-    --liftIO $ putStrLn $ show sampledAlleleAcrossPops
+    let sampledGenotypeAcrossPops = sampleWeightedList gen sampledGenotypesPerPop
+    --liftIO $ putStrLn $ show sampledGenotypeAcrossPops
     _ <- liftIO newStdGen
-    return sampledAlleleAcrossPops
+    return sampledGenotypeAcrossPops
 
-getAlleleFrequency :: [Int] -> GenoLine -> [(GenoEntry, Rational)]
-getAlleleFrequency individualIndices genoLine =
+getGenotypeFrequency :: [Int] -> GenoLine -> [(GenoEntry, Rational)]
+getGenotypeFrequency individualIndices genoLine =
     let relevantGenoEntries = [genoLine V.! i | i <- individualIndices]
     in  if all (Missing ==) relevantGenoEntries
         then [(Missing, 1)]
