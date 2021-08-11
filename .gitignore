@@ -4,3 +4,4 @@ docs/_build/
 playground/spacetime_test_data/
 playground/admixpops_test_data/
 .Rhistory
+.Rproj.user
