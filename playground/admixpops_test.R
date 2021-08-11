@@ -102,7 +102,7 @@ mds_raw |>
 
 #### three populations test ####
 
-ind_admixpops2_raw <- partitions::compositions(n = 10, m = 3, include.zero = T) |>
+ind_admixpops2_table <- partitions::compositions(n = 10, m = 3, include.zero = T) |>
   {\(x) x*10}() |>
   as.matrix() |>
   t() |>
@@ -115,16 +115,16 @@ ind_admixpops2_raw <- partitions::compositions(n = 10, m = 3, include.zero = T) 
       V3 > V1 & V3 > V2 ~ "FrenchDom",
       TRUE ~ "Center"
     )
-  ) |> {\(x) { 
-    purrr::pmap_chr(
+  ) 
+
+ind_admixpops2 <- ind_admixpops2_table |> {\(x) { 
+  purrr::pmap_chr(
       list(x$id, x$unit, x$V1, x$V2, x$V3),
       \(a,b,c,d,e) {
         paste0("[",a,":",b,"]","(Mbuti=",c,"+Han=",d,"+French=",e,")")
       }
     )
-  }}()
-
-ind_admixpops2 <- ind_admixpops2_raw |>
+  }}() |>
   {\(x) paste(x, collapse = ";")}()
 
 # run admixpops
@@ -148,8 +148,7 @@ mds_raw <- readr::read_delim(
 library(ggplot2)
 mds_raw |>
   ggplot() +
-  geom_point(aes(x = C1, y = C2, colour = FID)) +
-  ggthemes::scale_colour_colorblind()
+  geom_point(aes(x = C1, y = C2, colour = FID))
 
 #### admixture analysis ####
 
@@ -162,34 +161,33 @@ hu <- list.files(
   recursive = T,
   pattern = ".Q",
   full.names = T
-) |> 
+)[2] |> 
   (\(x) Map(\(y) {
     num_chimeras <- length(ind_admixpops2_raw)
-    readr::read_delim(y, col_names = F, delim = " ") |> 
-      dplyr::mutate(
-        run = y,
-        ind = c(rep(NA, (dplyr::n() - num_chimeras)), ind_admixpops2_raw)
-      )
+    readr::read_delim(y, col_names = F, delim = " ") |>
+      (\(x) x[(nrow(x) - nrow(ind_admixpops2_table) + 1):nrow(x),])() |>
+      dplyr::mutate(run = y) |>
+      dplyr::bind_cols(ind_admixpops2_table)
   }, x))() |>
-  dplyr::bind_rows() |>
-  dplyr::filter(
-    !is.na(ind),
-    run == dplyr::first(run)
-  ) |>
-  tidyr::pivot_longer(
-    tidyselect::starts_with("X"),
-    names_to = "K",
-    values_to = "proportion"
-  )
+  dplyr::bind_rows()# |>
+  # tidyr::pivot_longer(
+  #   tidyselect::starts_with("X"),
+  #   names_to = "k",
+  #   values_to = "k_proportion"
+  # )
 
-library(ggplot2)
+library(ggtern)
 hu |>
-  ggplot() +
-  geom_bar(
-    aes(x = ind, y = proportion, fill = K),
-    stat = "identity"
+  ggtern() +
+  geom_segment(
+    aes(X1, X2, X3, xend = V2, yend = V1, zend = V3), alpha = 0.5
   ) +
-  theme(
-    axis.text.x = element_text(angle = 90, hjust = 1)
-  )
+  geom_point(
+    aes(X1, X2, X3), color = "red"
+  ) +
+  geom_point(
+    aes(V1, V3, V2, color = unit)
+  ) +
+  theme_nomask()
+  
 
