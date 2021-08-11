@@ -102,8 +102,8 @@ mds_raw |>
 
 #### three populations test ####
 
-ind_admixpops2 <- partitions::compositions(n = 5, m = 3, include.zero = T) |>
-  {\(x) x*20}() |>
+ind_admixpops2_raw <- partitions::compositions(n = 10, m = 3, include.zero = T) |>
+  {\(x) x*10}() |>
   as.matrix() |>
   t() |>
   tibble::as_tibble() |>
@@ -113,7 +113,7 @@ ind_admixpops2 <- partitions::compositions(n = 5, m = 3, include.zero = T) |>
       V1 > V2 & V1 > V3 ~ "MbutiDom",
       V2 > V1 & V2 > V3 ~ "HanDom",
       V3 > V1 & V3 > V2 ~ "FrenchDom",
-      TRUE ~ "D"
+      TRUE ~ "Center"
     )
   ) |> {\(x) { 
     purrr::pmap_chr(
@@ -122,7 +122,9 @@ ind_admixpops2 <- partitions::compositions(n = 5, m = 3, include.zero = T) |>
         paste0("[",a,":",b,"]","(Mbuti=",c,"+Han=",d,"+French=",e,")")
       }
     )
-  }}() |>
+  }}()
+
+ind_admixpops2 <- ind_admixpops2_raw |>
   {\(x) paste(x, collapse = ";")}()
 
 # run admixpops
@@ -130,10 +132,10 @@ s(paste0('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics -a \"',
 
 # create data subset
 dd("admixpops_test_data/mbutihanfrench_merged")
-s('trident forge -d admixpops_test_data/2012_PattersonGenetics -d admixpops_test_data/mbutihanfrench -f "MbutiDom,HanDom,FrenchDom,Mbuti,Han,French" -n mbutihanfrench_merged -o admixpops_test_data/mbutihanfrench_merged')
+s('trident forge -d admixpops_test_data/2012_PattersonGenetics -d admixpops_test_data/mbutihanfrench -f "MbutiDom,HanDom,FrenchDom,Center,Mbuti,Han,French" -n mbutihanfrench_merged -o admixpops_test_data/mbutihanfrench_merged')
 
 # mds
-nd("admixpops_test_data/mbuti_mds")
+nd("admixpops_test_data/mbutihanfrench_mds")
 s('plink1.9 --bfile admixpops_test_data/mbutihanfrench_merged/mbutihanfrench_merged --genome --out admixpops_test_data/mbuti_mds/pairwise_stats')
 s('plink1.9 --bfile admixpops_test_data/mbutihanfrench_merged/mbutihanfrench_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/mbuti_mds/pairwise_stats.genome --out admixpops_test_data/mbuti_mds/mds')
 
@@ -146,4 +148,48 @@ mds_raw <- readr::read_delim(
 library(ggplot2)
 mds_raw |>
   ggplot() +
-  geom_point(aes(x = C1, y = C2, colour = FID))
+  geom_point(aes(x = C1, y = C2, colour = FID)) +
+  ggthemes::scale_colour_colorblind()
+
+#### admixture analysis ####
+
+eva.cluster::cluster_down(pw,
+  "/mnt/archgen/users/schmid/paagen/playground/admixpops_test_data/admixture_test" ~
+    "~/agora/paagen/playground/admixpops_test_data/admixture_test")
+
+hu <- list.files(
+  "~/agora/paagen/playground/admixpops_test_data/admixture_test/3",
+  recursive = T,
+  pattern = ".Q",
+  full.names = T
+) |> 
+  (\(x) Map(\(y) {
+    num_chimeras <- length(ind_admixpops2_raw)
+    readr::read_delim(y, col_names = F, delim = " ") |> 
+      dplyr::mutate(
+        run = y,
+        ind = c(rep(NA, (dplyr::n() - num_chimeras)), ind_admixpops2_raw)
+      )
+  }, x))() |>
+  dplyr::bind_rows() |>
+  dplyr::filter(
+    !is.na(ind),
+    run == dplyr::first(run)
+  ) |>
+  tidyr::pivot_longer(
+    tidyselect::starts_with("X"),
+    names_to = "K",
+    values_to = "proportion"
+  )
+
+library(ggplot2)
+hu |>
+  ggplot() +
+  geom_bar(
+    aes(x = ind, y = proportion, fill = K),
+    stat = "identity"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1)
+  )
+
