@@ -107,19 +107,20 @@ ind_admixpops2_table <- partitions::compositions(n = 10, m = 3, include.zero = T
   as.matrix() |>
   t() |>
   tibble::as_tibble() |>
+  stats::setNames(c("Mbuti", "Han", "French")) |>
   dplyr::mutate(
     id = 1:dplyr::n(),
     unit = dplyr::case_when(
-      V1 > V2 & V1 > V3 ~ "MbutiDom",
-      V2 > V1 & V2 > V3 ~ "HanDom",
-      V3 > V1 & V3 > V2 ~ "FrenchDom",
+      Mbuti > Han & Mbuti > French ~ "MbutiDom",
+      Han > Mbuti & Han > French ~ "HanDom",
+      French > Mbuti & French > Han ~ "FrenchDom",
       TRUE ~ "Center"
     )
-  ) 
+  )
 
 ind_admixpops2 <- ind_admixpops2_table |> {\(x) { 
   purrr::pmap_chr(
-      list(x$id, x$unit, x$V1, x$V2, x$V3),
+      list(x$id, x$unit, x$Mbuti, x$Han, x$French),
       \(a,b,c,d,e) {
         paste0("[",a,":",b,"]","(Mbuti=",c,"+Han=",d,"+French=",e,")")
       }
@@ -156,38 +157,67 @@ eva.cluster::cluster_down(pw,
   "/mnt/archgen/users/schmid/paagen/playground/admixpops_test_data/admixture_test" ~
     "~/agora/paagen/playground/admixpops_test_data/admixture_test")
 
-hu <- list.files(
+merged_admixture_results_wide <- list.files(
   "~/agora/paagen/playground/admixpops_test_data/admixture_test/3",
   recursive = T,
   pattern = ".Q",
   full.names = T
-)[2] |> 
+) |> 
   (\(x) Map(\(y) {
-    num_chimeras <- length(ind_admixpops2_raw)
-    readr::read_delim(y, col_names = F, delim = " ") |>
+    num_chimeras <- length(ind_admixpops2_table)
+    raw_out <- readr::read_delim(y, col_names = F, delim = " ")
+    sorted_dims <- raw_out[raw_out |> colSums() |> sort() |> names()] |> stats::setNames(c("OMbuti", "OFrench", "OHan"))
+    sorted_dims |>
       (\(x) x[(nrow(x) - nrow(ind_admixpops2_table) + 1):nrow(x),])() |>
       dplyr::mutate(run = y) |>
       dplyr::bind_cols(ind_admixpops2_table)
   }, x))() |>
-  dplyr::bind_rows()# |>
-  # tidyr::pivot_longer(
-  #   tidyselect::starts_with("X"),
-  #   names_to = "k",
-  #   values_to = "k_proportion"
-  # )
+  dplyr::bind_rows() |>
+  dplyr::group_by(id) |>
+  dplyr::summarise(
+    mean_OMbuti = mean(OMbuti),
+    mean_OHan = mean(OHan),
+    mean_OFrench = mean(OFrench),
+    # sd is trivially small!
+    IMbuti = dplyr::first(Mbuti),
+    IHan = dplyr::first(Han),
+    IFrench = dplyr::first(French),
+    unit = dplyr::first(unit)
+  )
+
+merged_admixture_results_long <- merged_admixture_results_wide |>
+  tidyr::pivot_longer(
+    tidyselect::starts_with(c("mean_", "I"), ignore.case = F)
+  ) |>
+  dplyr::mutate(
+    type = dplyr::case_when(
+      grepl("mean", name) ~ "out_paagen+admixture",
+      TRUE ~ "in_theoretical"
+    ),
+    name = dplyr::case_when(
+      grepl("Mbuti", name) ~ "Mbuti",
+      grepl("Han", name) ~ "Han",
+      grepl("French", name) ~ "French"
+    )
+  ) |>
+  tidyr::pivot_wider(
+    id_cols = c(id, unit, type),
+    names_from = name,
+    values_from = value
+  )
 
 library(ggtern)
-hu |>
-  ggtern() +
+ggtern() +
   geom_segment(
-    aes(X1, X2, X3, xend = V2, yend = V1, zend = V3), alpha = 0.5
+    data = merged_admixture_results_wide,
+    aes(mean_OMbuti, mean_OHan, mean_OFrench, xend = IMbuti, yend = IHan, zend = IFrench), alpha = 0.5
   ) +
   geom_point(
-    aes(X1, X2, X3), color = "red"
+    data = merged_admixture_results_long,
+    aes(Mbuti, Han, French, color = unit, shape = type),
+    size = 2
   ) +
-  geom_point(
-    aes(V1, V3, V2, color = unit)
-  ) +
-  theme_nomask()
-  
-
+  theme_nomask() +
+  xlab("Mbuti") +
+  ylab("Han") +
+  zlab("French")
