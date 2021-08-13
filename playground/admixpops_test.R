@@ -65,7 +65,8 @@ ind_admixpops <- partitions::compositions(n = 10, m = 2, include.zero = T) |>
     id = 1:dplyr::n(),
     unit = dplyr::case_when(
       V1 > V2 ~ "HanDom",
-      TRUE ~ "FrenchDom"
+      V2 > V1 ~ "FrenchDom",
+      TRUE ~ "Center"
     )
   ) |> {\(x) { 
     purrr::pmap_chr(
@@ -82,7 +83,7 @@ s(paste0('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics -a \"',
 
 # create data subset
 dd("admixpops_test_data/hanfrench_merged")
-s('trident forge -d admixpops_test_data/2012_PattersonGenetics -d admixpops_test_data/hanfrench -f "HanDom,FrenchDom,Han,French" -n hanfrench_merged -o admixpops_test_data/hanfrench_merged')
+s('trident forge -d admixpops_test_data/2012_PattersonGenetics -d admixpops_test_data/hanfrench -f "HanDom,FrenchDom,Center,Han,French" -n hanfrench_merged -o admixpops_test_data/hanfrench_merged')
 
 # mds
 nd("admixpops_test_data/mds")
