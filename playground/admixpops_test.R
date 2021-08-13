@@ -30,6 +30,28 @@ mds_raw |>
   ggplot() +
   geom_point(aes(x = C1, y = C2, colour = FID))
 
+#### one large population test, but now with other pops in MDS ####
+
+# create data subset
+dd("admixpops_test_data/hanbonus_merged")
+s('trident forge -d admixpops_test_data/2012_PattersonGenetics -d admixpops_test_data/han -f "HanDom,Han,French,Mbuti" -n hanbonus_merged -o admixpops_test_data/hanbonus_merged')
+
+# mds
+nd("admixpops_test_data/hanbonus_mds")
+s('plink1.9 --bfile admixpops_test_data/hanbonus_merged/hanbonus_merged --genome --out admixpops_test_data/hanbonus_mds/pairwise_stats')
+s('plink1.9 --bfile admixpops_test_data/hanbonus_merged/hanbonus_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/hanbonus_mds/pairwise_stats.genome --out admixpops_test_data/hanbonus_mds/mds')
+
+# plot
+mds_raw <- readr::read_delim(
+  "admixpops_test_data/hanbonus_mds/mds.mds", " ", trim_ws = T,
+  col_types = "ccddd_"
+)
+
+library(ggplot2)
+mds_raw |>
+  ggplot() +
+  geom_point(aes(x = C1, y = C2, colour = FID))
+
 #### one small population test ####
 
 s(paste0('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics -a "[1:BantuSADom](BantuSA=100);[2:BantuSADom](BantuSA=100);[3:BantuSADom](BantuSA=100);[4:BantuSADom](BantuSA=100);[5:BantuSADom](BantuSA=100)" -o admixpops_test_data/BantuSA'))
