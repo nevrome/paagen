@@ -12,14 +12,13 @@ import           Data.Ratio                     ((%))
 import           Pipes
 import qualified Pipes.Prelude                  as P
 import           Pipes.Safe                     (runSafeT)
-import           Poseidon.BibFile
 import           Poseidon.GenotypeData
 import           Poseidon.Janno
 import           Poseidon.Package
 import           SequenceFormats.Eigenstrat     (EigenstratIndEntry (..), writeEigenstrat)
 import           SequenceFormats.Plink          (writePlink)
 import           System.Directory               (createDirectoryIfMissing)
-import           System.FilePath                ((<.>), (</>))
+import           System.FilePath                ((</>))
 import           System.IO                      (hPutStrLn, stderr, hPrint)
 import Control.Exception (throwIO)
 
@@ -68,8 +67,12 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
     let [outInd, outSnp, outGeno] = case outFormat of
             GenotypeFormatEigenstrat -> ["admixpops_package.ind", "admixpops_package.snp", "admixpops_package.geno"]
             GenotypeFormatPlink -> ["admixpops_package.fam", "admixpops_package.bim", "admixpops_package.bed"]
-    -- create output directory
+    -- create output poseidon package
+    hPutStrLn stderr "Creating output Poseidon package"
     createDirectoryIfMissing True outDir
+    let genotypeData = GenotypeDataSpec outFormat outGeno Nothing outSnp Nothing outInd Nothing Nothing
+        pac = newMinimalPackageTemplate outDir "admixpops_package" genotypeData
+    writePoseidonPackage pac
     -- compile genotype data
     hPutStrLn stderr "Compiling chimeras"
     runSafeT $ do
@@ -81,14 +84,6 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
                 GenotypeFormatPlink      -> writePlink      outG outS outI newIndEntries
         runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (sampleGenoForMultipleIndWithAdmixtureSet popsFracsInds) >-> outConsumer
         liftIO $ hPutStrLn stderr "Done"
-    -- complete poseidon package
-    hPutStrLn stderr "Wrapping generated genotype data in a Poseidon package"
-    let genotypeData = GenotypeDataSpec outFormat outGeno Nothing outSnp Nothing outInd Nothing Nothing
-    inds <- loadIndividuals outDir genotypeData
-    pac <- newPackageTemplate outDir "admixpops_package" genotypeData (Just inds) Nothing Nothing
-    writePoseidonPackage pac
-    writeJannoFile (outDir </> "admixpops_package" <.> "janno") $ posPacJanno pac
-    writeBibTeXFile (outDir </> "admixpops_package" <.> "bib") $ posPacBib pac
 
 checkIndsWithAdmixtureSets :: IndWithAdmixtureSet -> IO ()
 checkIndsWithAdmixtureSets cur@(IndWithAdmixtureSet _ _ (AdmixtureSet _popFracList)) = do
