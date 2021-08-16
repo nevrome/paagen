@@ -1,5 +1,5 @@
 name:                paagen
-version:             0.1.0
+version:             0.1.1
 synopsis:            A package to generate artificial genotype profiles
 description:         Genotype data generation to compile artificial individuals based on input data in the
   Poseidon format
