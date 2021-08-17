@@ -82,7 +82,7 @@ ind_admixpops <- partitions::compositions(n = 10, m = 2, include.zero = T) |>
   {\(x) x*10}() |>
   as.matrix() |>
   t() |>
-  tibble::as_tibble() |>
+  as.data.frame() |>
   dplyr::mutate(
     id = 1:dplyr::n(),
     unit = dplyr::case_when(
@@ -129,7 +129,7 @@ ind_admixpops2_table <- partitions::compositions(n = 10, m = 3, include.zero = T
   {\(x) x*10}() |>
   as.matrix() |>
   t() |>
-  tibble::as_tibble() |>
+  as.data.frame() |>
   stats::setNames(c("Mbuti", "Han", "French")) |>
   dplyr::mutate(
     id = 1:dplyr::n(),
@@ -152,7 +152,7 @@ ind_admixpops2 <- ind_admixpops2_table |> {\(x) {
   {\(x) paste(x, collapse = ";")}()
 
 # run admixpops
-s(paste0('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics -a \"', ind_admixpops2, '\" -o admixpops_test_data/mbutihanfrench'))
+s(paste0('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics -a \"', ind_admixpops2, '\" --marginalizeMissing -o admixpops_test_data/mbutihanfrench'))
 
 # create data subset
 dd("admixpops_test_data/mbutihanfrench_merged")
@@ -160,12 +160,12 @@ s('trident forge -d admixpops_test_data/2012_PattersonGenetics -d admixpops_test
 
 # mds
 nd("admixpops_test_data/mbutihanfrench_mds")
-s('plink1.9 --bfile admixpops_test_data/mbutihanfrench_merged/mbutihanfrench_merged --genome --out admixpops_test_data/mbuti_mds/pairwise_stats')
-s('plink1.9 --bfile admixpops_test_data/mbutihanfrench_merged/mbutihanfrench_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/mbuti_mds/pairwise_stats.genome --out admixpops_test_data/mbuti_mds/mds')
+s('plink1.9 --bfile admixpops_test_data/mbutihanfrench_merged/mbutihanfrench_merged --genome --out admixpops_test_data/mbutihanfrench_mds/pairwise_stats')
+s('plink1.9 --bfile admixpops_test_data/mbutihanfrench_merged/mbutihanfrench_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/mbutihanfrench_mds/pairwise_stats.genome --out admixpops_test_data/mbutihanfrench_mds/mds')
 
 # plot
 mds_raw <- readr::read_delim(
-  "admixpops_test_data/mbuti_mds/mds.mds", " ", trim_ws = T,
+  "admixpops_test_data/mbutihanfrench_mds/mds.mds", " ", trim_ws = T,
   col_types = "ccddd_"
 )
 

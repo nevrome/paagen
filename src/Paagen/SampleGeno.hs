@@ -12,17 +12,17 @@ import qualified        Data.Vector as V
 
 -- admixpops
 
-sampleGenoForMultipleIndWithAdmixtureSet :: [[([Int], Rational)]] -> (EigenstratSnpEntry, GenoLine) -> SafeT IO (EigenstratSnpEntry, GenoLine)
-sampleGenoForMultipleIndWithAdmixtureSet infoForIndividualInd (snpEntry, genoLine) = do
-    entries <- mapM (`sampleGenoForOneIndWithAdmixtureSet` genoLine) infoForIndividualInd
+sampleGenoForMultipleIndWithAdmixtureSet :: Bool -> [[([Int], Rational)]] -> (EigenstratSnpEntry, GenoLine) -> SafeT IO (EigenstratSnpEntry, GenoLine)
+sampleGenoForMultipleIndWithAdmixtureSet marginalizeMissing infoForIndividualInd (snpEntry, genoLine) = do
+    entries <- mapM (\x -> sampleGenoForOneIndWithAdmixtureSet marginalizeMissing x genoLine) infoForIndividualInd
     return (snpEntry, V.fromList entries)
 
-sampleGenoForOneIndWithAdmixtureSet :: [([Int], Rational)] -> GenoLine -> SafeT IO GenoEntry
-sampleGenoForOneIndWithAdmixtureSet xs genoLine = do
+sampleGenoForOneIndWithAdmixtureSet :: Bool -> [([Int], Rational)] -> GenoLine -> SafeT IO GenoEntry
+sampleGenoForOneIndWithAdmixtureSet marginalizeMissing xs genoLine = do
     gen <- liftIO getStdGen
     --liftIO $ putStrLn $ show $ xs
     --liftIO $ putStrLn $ show $ map (\(x,y) -> (getGenotypeFrequency x genoLine, y)) xs
-    let sampledGenotypesPerPop = map (\(x,y) -> (sampleWeightedList gen $ getGenotypeFrequency x genoLine, y)) xs
+    let sampledGenotypesPerPop = map (\(x,y) -> (sampleWeightedList gen $ getGenotypeFrequency marginalizeMissing x genoLine, y)) xs
     --liftIO $ putStrLn $ show sampledGenotypesPerPop
     --liftIO newStdGen -- do I need a second one?
     --gen <- liftIO getStdGen
@@ -31,12 +31,14 @@ sampleGenoForOneIndWithAdmixtureSet xs genoLine = do
     _ <- liftIO newStdGen
     return sampledGenotypeAcrossPops
 
-getGenotypeFrequency :: [Int] -> GenoLine -> [(GenoEntry, Rational)]
-getGenotypeFrequency individualIndices genoLine =
+getGenotypeFrequency :: Bool -> [Int] -> GenoLine -> [(GenoEntry, Rational)]
+getGenotypeFrequency marginalizeMissing individualIndices genoLine =
     let relevantGenoEntries = [genoLine V.! i | i <- individualIndices]
     in  if all (Missing ==) relevantGenoEntries
         then [(Missing, 1)]
-        else calcFractions $ filter (Missing /=) relevantGenoEntries
+        else if marginalizeMissing
+             then calcFractions $ filter (Missing /=) relevantGenoEntries
+             else calcFractions relevantGenoEntries
 
 calcFractions :: [GenoEntry] -> [(GenoEntry, Rational)]
 calcFractions xs =

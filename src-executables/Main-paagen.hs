@@ -64,6 +64,7 @@ admixPopsOptParser :: OP.Parser AdmixPopsOptions
 admixPopsOptParser = AdmixPopsOptions <$> parseBasePaths
                                       <*> parseIndWithAdmixtureSetDirect
                                       <*> parseIndWithAdmixtureSetFromFile
+                                      <*> parseMarginalizeMissing
                                       <*> parseOutGenotypeFormat
                                       <*> parseOutPath
 
@@ -84,6 +85,13 @@ parseIndWithAdmixtureSetFromFile = OP.option (Just <$> OP.str) (OP.long "admixFi
     OP.help "A file with a list of spatiotemporal positions. \
             \Works just as -p, but multiple values can be given separated by newline. \
             \-a and --admixFile can be combined."
+    )
+
+parseMarginalizeMissing :: OP.Parser Bool
+parseMarginalizeMissing = OP.switch (
+    OP.long "marginalizeMissing" <> 
+    OP.help "ignore missing SNPs in the per-population genotype frequency calculation \
+            \(except all individuals have missing information for a given SNP)"
     )
 
 parseBasePaths :: OP.Parser [FilePath]

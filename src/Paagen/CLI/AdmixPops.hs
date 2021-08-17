@@ -26,6 +26,7 @@ data AdmixPopsOptions = AdmixPopsOptions {
       _admixBaseDirs :: [FilePath]
     , _admixIndWithAdmixtureSet :: [IndWithAdmixtureSet]
     , _admixIndWithAdmixtureSetFile :: Maybe FilePath
+    , _admixMarginalizeMissing :: Bool
     , _admixOutFormat :: GenotypeFormatSpec
     , _admixOutPath :: FilePath
     }
@@ -40,7 +41,7 @@ pacReadOpts = defaultPackageReadOptions {
     }
 
 runAdmixPops :: AdmixPopsOptions -> IO ()
-runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile outFormat outDir) = do
+runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile marginalizeMissing outFormat outDir) = do
     -- compile individuals
     popsWithFracsFromFile <- case popsWithFracsFile of
         Nothing -> return []
@@ -82,7 +83,7 @@ runAdmixPops (AdmixPopsOptions baseDirs popsWithFracsDirect popsWithFracsFile ou
         let outConsumer = case outFormat of
                 GenotypeFormatEigenstrat -> writeEigenstrat outG outS outI newIndEntries
                 GenotypeFormatPlink      -> writePlink      outG outS outI newIndEntries
-        runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (sampleGenoForMultipleIndWithAdmixtureSet popsFracsInds) >-> outConsumer
+        runEffect $ eigenstratProd >-> printSNPCopyProgress >-> P.mapM (sampleGenoForMultipleIndWithAdmixtureSet marginalizeMissing popsFracsInds) >-> outConsumer
         liftIO $ hPutStrLn stderr "Done"
 
 checkIndsWithAdmixtureSets :: IndWithAdmixtureSet -> IO ()
