@@ -187,18 +187,32 @@ ggsave(
 
 #### three pops: admixture analysis ####
 
+# create .pop file for supervised admixture
+fam <- readr::read_tsv(
+  "admixpops_test_data/mbutihanfrench_merged/mbutihanfrench_merged.fam",
+  col_names = F
+)
+
+writeLines(
+  ifelse(
+    fam$X1 %in% c("French", "Mbuti", "Han"), fam$X1, "-"
+  ),
+  "admixpops_test_data/mbutihanfrench_merged/mbutihanfrench_merged.pop"
+)
+
+# upload data to cluster
 eva.cluster::cluster_up(
   pw,
   "~/agora/paagen/playground/admixpops_test_data/mbutihanfrench_merged" ~
     "/mnt/archgen/users/schmid/paagen/playground/admixpops_test_data/mbutihanfrench_merged"
 )
 
-# run runAdmixture.sh
+# run on cluster: qsub runAdmixture.sh
 
 eva.cluster::cluster_down(
   pw,
   "/mnt/archgen/users/schmid/paagen/playground/admixpops_test_data/admixture_test" ~
-    "~/agora/paagen/playground/admixpops_test_data/admixture_test"
+    "~/agora/paagen/playground/admixpops_test_data/admixture_test2"
 )
 
 merged_admixture_results_wide <- list.files(
