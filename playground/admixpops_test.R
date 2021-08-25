@@ -2,17 +2,25 @@
 source("technical_helpers.R")
 
 # prepare data
-nd("admixpops_test_data")
+#nd("admixpops_test_data")
+
+# download
 s('trident fetch -d admixpops_test_data -f "*2012_PattersonGenetics*"')
+
+# pruning
+nd("admixpops_test_data/plink_patterson_pruned")
+s("plink --bfile admixpops_test_data/2012_PattersonGenetics/2012_PattersonGenetics --exclude pruning_ranges.txt --range --maf --make-bed --out admixpops_test_data/plink_patterson_pruned/pruned")
+
+s("trident init --inFormat PLINK --snpSet Other --genoFile admixpops_test_data/plink_patterson_pruned/pruned.bed --indFile admixpops_test_data/plink_patterson_pruned/pruned.fam --snpFile admixpops_test_data/plink_patterson_pruned/pruned.bim -o admixpops_test_data/2012_PattersonGenetics_pruned -n 2012_PattersonGenetics_pruned")
 
 #### one large population test ####
 
 # run admixpops
-s(paste0('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics -a "[1:HanDom](Han=100);[2:HanDom](Han=100);[3:HanDom](Han=100);[4:HanDom](Han=100);[5:HanDom](Han=100)" -o admixpops_test_data/han'))
+s(paste0('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a "[1:HanDom](Han=100);[2:HanDom](Han=100);[3:HanDom](Han=100);[4:HanDom](Han=100);[5:HanDom](Han=100)" -o admixpops_test_data/han'))
 
 # create data subset
 dd("admixpops_test_data/han_merged")
-s('trident forge -d admixpops_test_data/2012_PattersonGenetics -d admixpops_test_data/han -f "HanDom,Han" -n han_merged -o admixpops_test_data/han_merged')
+s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpops_test_data/han -f "HanDom,Han" -n han_merged -o admixpops_test_data/han_merged')
 
 # mds
 nd("admixpops_test_data/han_mds")
@@ -34,7 +42,7 @@ mds_raw |>
 
 # create data subset
 dd("admixpops_test_data/hanbonus_merged")
-s('trident forge -d admixpops_test_data/2012_PattersonGenetics -d admixpops_test_data/han -f "HanDom,Han,French,Mbuti" -n hanbonus_merged -o admixpops_test_data/hanbonus_merged')
+s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpops_test_data/han -f "HanDom,Han,French,Mbuti" -n hanbonus_merged -o admixpops_test_data/hanbonus_merged')
 
 # mds
 nd("admixpops_test_data/hanbonus_mds")
@@ -54,11 +62,11 @@ mds_raw |>
 
 #### one small population test ####
 
-s(paste0('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics -a "[1:BantuSADom](BantuSA=100);[2:BantuSADom](BantuSA=100);[3:BantuSADom](BantuSA=100);[4:BantuSADom](BantuSA=100);[5:BantuSADom](BantuSA=100)" -o admixpops_test_data/BantuSA'))
+s(paste0('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a "[1:BantuSADom](BantuSA=100);[2:BantuSADom](BantuSA=100);[3:BantuSADom](BantuSA=100);[4:BantuSADom](BantuSA=100);[5:BantuSADom](BantuSA=100)" -o admixpops_test_data/BantuSA'))
 
 # create data subset
 dd("admixpops_test_data/BantuSA_merged")
-s('trident forge -d admixpops_test_data/2012_PattersonGenetics -d admixpops_test_data/BantuSA -f "BantuSADom,BantuSA" -n BantuSA_merged -o admixpops_test_data/BantuSA_merged')
+s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpops_test_data/BantuSA -f "BantuSADom,BantuSA" -n BantuSA_merged -o admixpops_test_data/BantuSA_merged')
 
 # mds
 nd("admixpops_test_data/BantuSA_mds")
@@ -101,11 +109,11 @@ ind_admixpops <- partitions::compositions(n = 10, m = 2, include.zero = T) |>
   {\(x) paste(x, collapse = ";")}()
 
 # run admixpops
-s(paste0('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics -a \"', ind_admixpops, '\" -o admixpops_test_data/hanfrench'))
+s(paste0('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a \"', ind_admixpops, '\" -o admixpops_test_data/hanfrench'))
 
 # create data subset
 dd("admixpops_test_data/hanfrench_merged")
-s('trident forge -d admixpops_test_data/2012_PattersonGenetics -d admixpops_test_data/hanfrench -f "HanDom,FrenchDom,Center,Han,French" -n hanfrench_merged -o admixpops_test_data/hanfrench_merged')
+s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpops_test_data/hanfrench -f "HanDom,FrenchDom,Center,Han,French" -n hanfrench_merged -o admixpops_test_data/hanfrench_merged')
 
 # mds
 nd("admixpops_test_data/mds")
@@ -152,11 +160,11 @@ ind_admixpops2 <- ind_admixpops2_table |> {\(x) {
   {\(x) paste(x, collapse = ";")}()
 
 # run admixpops
-s(paste0('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics -a \"', ind_admixpops2, '\" --marginalizeMissing -o admixpops_test_data/mbutihanfrench'))
+s(paste0('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a \"', ind_admixpops2, '\" --marginalizeMissing -o admixpops_test_data/mbutihanfrench'))
 
 # create data subset
 dd("admixpops_test_data/mbutihanfrench_merged")
-s('trident forge -d admixpops_test_data/2012_PattersonGenetics -d admixpops_test_data/mbutihanfrench -f "MbutiDom,HanDom,FrenchDom,Center,Mbuti,Han,French" -n mbutihanfrench_merged -o admixpops_test_data/mbutihanfrench_merged')
+s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpops_test_data/mbutihanfrench -f "MbutiDom,HanDom,FrenchDom,Center,Mbuti,Han,French" -n mbutihanfrench_merged -o admixpops_test_data/mbutihanfrench_merged')
 
 # mds
 nd("admixpops_test_data/mbutihanfrench_mds")
