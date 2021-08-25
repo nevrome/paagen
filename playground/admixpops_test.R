@@ -158,7 +158,7 @@ ind_admixpops2 <- ind_admixpops2_table |> {\(x) {
   {\(x) paste(x, collapse = ";")}()
 
 # run admixpops
-s(paste0('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a \"', ind_admixpops2, '\" --marginalizeMissing -o admixpops_test_data/mbutihanfrench'))
+s(paste0('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a \"', ind_admixpops2, '\" -o admixpops_test_data/mbutihanfrench'))
 
 # create data subset
 dd("admixpops_test_data/mbutihanfrench_merged")
@@ -178,6 +178,36 @@ p <- mds_raw |>
 
 ggsave(
   "admixpops_test_data/plots/mbutihanfrench_mds.jpeg",
+  plot = p,
+  device = "jpeg",
+  width = 10,
+  height = 6,
+  scale = 0.8
+)
+
+#### three pops: now with --marginalizeMissing ####
+
+# run admixpops
+s(paste0('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a \"', ind_admixpops2, '\" --marginalizeMissing -o admixpops_test_data/mbutihanfrench_mm'))
+
+# create data subset
+dd("admixpops_test_data/mbutihanfrench_mm_merged")
+s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpops_test_data/mbutihanfrench_mm -f "MbutiDom,HanDom,FrenchDom,Center,Mbuti,Han,French" -n mbutihanfrench_mm_merged -o admixpops_test_data/mbutihanfrench_mm_merged')
+
+# mds
+nd("admixpops_test_data/mbutihanfrench_mm_mds")
+s('plink1.9 --bfile admixpops_test_data/mbutihanfrench_mm_merged/mbutihanfrench_mm_merged --genome --out admixpops_test_data/mbutihanfrench_mm_mds/pairwise_stats')
+s('plink1.9 --bfile admixpops_test_data/mbutihanfrench_mm_merged/mbutihanfrench_mm_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/mbutihanfrench_mm_mds/pairwise_stats.genome --out admixpops_test_data/mbutihanfrench_mm_mds/mds')
+
+# plot
+mds_raw <- read_mds("admixpops_test_data/mbutihanfrench_mm_mds/mds.mds")
+
+p <- mds_raw |>
+  ggplot() +
+  geom_point(aes(x = C1, y = C2, colour = FID))
+
+ggsave(
+  "admixpops_test_data/plots/mbutihanfrench_mm_mds.jpeg",
   plot = p,
   device = "jpeg",
   width = 10,
