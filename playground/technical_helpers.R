@@ -1,3 +1,18 @@
+# read mds
+read_mds <- function(x) {
+  readr::read_fwf(
+    file = x, 
+    col_positions = readr::fwf_empty(
+      x,
+      skip = 1,
+      col_names = c("FID", "IID", "SOL", "C1", "C2")
+    ),
+    trim_ws = T,
+    col_types = "ccddd_",
+    skip = 1
+  )
+}
+
 # run system command RStudio
 s <- function(x) {
   termId <- rstudioapi::terminalCreate()

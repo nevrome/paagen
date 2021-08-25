@@ -1,5 +1,5 @@
-# setwd("/home/schmid/agora/paagen/playground") 
 source("technical_helpers.R")
+library(ggplot2)
 
 # prepare data
 #nd("admixpops_test_data")
@@ -28,12 +28,8 @@ s('plink1.9 --bfile admixpops_test_data/han_merged/han_merged --genome --out adm
 s('plink1.9 --bfile admixpops_test_data/han_merged/han_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/han_mds/pairwise_stats.genome --out admixpops_test_data/han_mds/mds')
 
 # plot
-mds_raw <- readr::read_delim(
-  "admixpops_test_data/han_mds/mds.mds", " ", trim_ws = T,
-  col_types = "ccddd_"
-)
+mds_raw <- read_mds("admixpops_test_data/han_mds/mds.mds")
 
-library(ggplot2)
 mds_raw |>
   ggplot() +
   geom_point(aes(x = C1, y = C2, colour = FID))
