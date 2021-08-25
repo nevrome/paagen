@@ -10,7 +10,7 @@ s('trident fetch -d admixpops_test_data -f "*2012_PattersonGenetics*"')
 
 # pruning
 nd("admixpops_test_data/plink_patterson_pruned")
-s("plink --bfile admixpops_test_data/2012_PattersonGenetics/2012_PattersonGenetics --exclude pruning_ranges.txt --range --maf --make-bed --out admixpops_test_data/plink_patterson_pruned/pruned")
+s("plink1.9 --bfile admixpops_test_data/2012_PattersonGenetics/2012_PattersonGenetics --exclude pruning_ranges.txt --range --maf --make-bed --out admixpops_test_data/plink_patterson_pruned/pruned")
 
 s("trident init --inFormat PLINK --snpSet Other --genoFile admixpops_test_data/plink_patterson_pruned/pruned.bed --indFile admixpops_test_data/plink_patterson_pruned/pruned.fam --snpFile admixpops_test_data/plink_patterson_pruned/pruned.bim -o admixpops_test_data/2012_PattersonGenetics_pruned -n 2012_PattersonGenetics_pruned")
 
@@ -215,12 +215,13 @@ eva.cluster::cluster_down(
     "~/agora/paagen/playground/admixpops_test_data/admixture_test2"
 )
 
+# read all results and bring them together
 merged_admixture_results_wide <- list.files(
-  "~/agora/paagen/playground/admixpops_test_data/admixture_test/3",
+  "~/agora/paagen/playground/admixpops_test_data/admixture_test2/3",
   recursive = T,
   pattern = ".Q",
   full.names = T
-) |> 
+) |>
   (\(x) Map(\(y) {
     num_chimeras <- length(ind_admixpops2_table)
     raw_out <- readr::read_delim(y, col_names = F, delim = " ")
@@ -243,6 +244,7 @@ merged_admixture_results_wide <- list.files(
     unit = dplyr::first(unit)
   )
 
+# transform data to ggtern
 merged_admixture_results_long <- merged_admixture_results_wide |>
   tidyr::pivot_longer(
     tidyselect::starts_with(c("mean_", "I"), ignore.case = F)
@@ -264,8 +266,8 @@ merged_admixture_results_long <- merged_admixture_results_wide |>
     values_from = value
   )
 
-library(ggtern)
-ggtern() +
+# plot
+p <- ggtern::ggtern() +
   geom_segment(
     data = merged_admixture_results_wide,
     aes(mean_OMbuti, mean_OHan, mean_OFrench, xend = IMbuti, yend = IHan, zend = IFrench), alpha = 0.5
@@ -280,25 +282,43 @@ ggtern() +
   ylab("Han") +
   zlab("French")
 
-#### one large population test, but with other pops in MDS ####
-
-# create data subset
-dd("admixpops_test_data/hanbonus_merged")
-s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpops_test_data/han -f "HanDom,Han,French,Mbuti" -n hanbonus_merged -o admixpops_test_data/hanbonus_merged')
-
-# mds
-nd("admixpops_test_data/hanbonus_mds")
-s('plink1.9 --bfile admixpops_test_data/hanbonus_merged/hanbonus_merged --genome --out admixpops_test_data/hanbonus_mds/pairwise_stats')
-s('plink1.9 --bfile admixpops_test_data/hanbonus_merged/hanbonus_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/hanbonus_mds/pairwise_stats.genome --out admixpops_test_data/hanbonus_mds/mds')
-
-# plot
-mds_raw <- readr::read_delim(
-  "admixpops_test_data/hanbonus_mds/mds.mds", " ", trim_ws = T,
-  col_types = "ccddd_"
+ggsave(
+  "admixpops_test_data/plots/mbutihanfrench_admix.jpeg",
+  plot = p,
+  device = "jpeg",
+  width = 10,
+  height = 6,
+  scale = 0.8
 )
 
-library(ggplot2)
-mds_raw |>
+#### independent runs, but with other pops in MDS ####
+
+s(paste0('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a "[6:FrenchDom](French=100);[7:FrenchDom](French=100);[8:FrenchDom](French=100);[9:FrenchDom](French=100);[10:FrenchDom](French=100)" -o admixpops_test_data/french'))
+
+s(paste0('paagen admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a "[11:MbutiDom](Mbuti=100);[12:MbutiDom](Mbuti=100);[13:MbutiDom](Mbuti=100);[14:MbutiDom](Mbuti=100);[15:MbutiDom](Mbuti=100)" -o admixpops_test_data/mbuti'))
+
+# create data subset
+dd("admixpops_test_data/independenthanfrenchmbuti_merged")
+s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpops_test_data/han -d admixpops_test_data/french -d admixpops_test_data/mbuti -f "MbutiDom,FrenchDom,HanDom,Han,French,Mbuti" -n independenthanfrenchmbuti_merged -o admixpops_test_data/independenthanfrenchmbuti_merged')
+
+# mds
+nd("admixpops_test_data/independenthanfrenchmbuti_mds")
+s('plink1.9 --bfile admixpops_test_data/independenthanfrenchmbuti_merged/independenthanfrenchmbuti_merged --genome --out admixpops_test_data/independenthanfrenchmbuti_mds/pairwise_stats')
+s('plink1.9 --bfile admixpops_test_data/independenthanfrenchmbuti_merged/independenthanfrenchmbuti_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/independenthanfrenchmbuti_mds/pairwise_stats.genome --out admixpops_test_data/independenthanfrenchmbuti_mds/mds')
+
+# plot
+mds_raw <- read_mds("admixpops_test_data/independenthanfrenchmbuti_mds/mds.mds")
+
+p <- mds_raw |>
   ggplot() +
   geom_point(aes(x = C1, y = C2, colour = FID))
+
+ggsave(
+  "admixpops_test_data/plots/independenthanfrenchmbuti_mds.jpeg",
+  plot = p,
+  device = "jpeg",
+  width = 10,
+  height = 6,
+  scale = 0.8
+)
 
