@@ -7,4 +7,4 @@ package pandoc-citeproc
 source-repository-package
     type: git
     location: https://github.com/poseidon-framework/poseidon-hs.git
-    tag: 27f821c5584fd6dbd020264e375fd164bde056db
+    tag: 993be2f2d7ba35ba019d56b75f39d22c3f5e9554

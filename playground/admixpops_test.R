@@ -187,10 +187,18 @@ ggsave(
 
 #### three pops: admixture analysis ####
 
+eva.cluster::cluster_up(
+  pw,
+  "~/agora/paagen/playground/admixpops_test_data/mbutihanfrench_merged" ~
+    "/mnt/archgen/users/schmid/paagen/playground/admixpops_test_data/mbutihanfrench_merged"
+)
+
+# run runAdmixture.sh
+
 eva.cluster::cluster_down(
   pw,
   "/mnt/archgen/users/schmid/paagen/playground/admixpops_test_data/admixture_test" ~
-  "~/agora/paagen/playground/admixpops_test_data/admixture_test"
+    "~/agora/paagen/playground/admixpops_test_data/admixture_test"
 )
 
 merged_admixture_results_wide <- list.files(
