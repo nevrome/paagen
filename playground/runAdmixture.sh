@@ -39,7 +39,7 @@ mkdir -p ${CurrentK}/${CurrentRep}
 
 ## Finally, run ADMIXTURE.
 cd ${CurrentK}/${CurrentRep}
-admixture -j${NumCPUs} -s ${RANDOM} --cv ${bedFile} ${CurrentK} 1>${fn0}/${CurrentK}/Logs/K${CurrentK}_${CurrentRep}.log
+admixture --supervised -j${NumCPUs} -s ${RANDOM} --cv ${bedFile} ${CurrentK} 1>${fn0}/${CurrentK}/Logs/K${CurrentK}_${CurrentRep}.log
 
 date
 
