@@ -3,6 +3,7 @@ library(ggplot2)
 
 # prepare data
 #nd("admixpops_test_data")
+#nd("admixpops_test_data/plots")
 
 # download
 s('trident fetch -d admixpops_test_data -f "*2012_PattersonGenetics*"')
@@ -30,31 +31,18 @@ s('plink1.9 --bfile admixpops_test_data/han_merged/han_merged --cluster --mds-pl
 # plot
 mds_raw <- read_mds("admixpops_test_data/han_mds/mds.mds")
 
-mds_raw |>
+p <- mds_raw |>
   ggplot() +
   geom_point(aes(x = C1, y = C2, colour = FID))
 
-#### one large population test, but now with other pops in MDS ####
-
-# create data subset
-dd("admixpops_test_data/hanbonus_merged")
-s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpops_test_data/han -f "HanDom,Han,French,Mbuti" -n hanbonus_merged -o admixpops_test_data/hanbonus_merged')
-
-# mds
-nd("admixpops_test_data/hanbonus_mds")
-s('plink1.9 --bfile admixpops_test_data/hanbonus_merged/hanbonus_merged --genome --out admixpops_test_data/hanbonus_mds/pairwise_stats')
-s('plink1.9 --bfile admixpops_test_data/hanbonus_merged/hanbonus_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/hanbonus_mds/pairwise_stats.genome --out admixpops_test_data/hanbonus_mds/mds')
-
-# plot
-mds_raw <- readr::read_delim(
-  "admixpops_test_data/hanbonus_mds/mds.mds", " ", trim_ws = T,
-  col_types = "ccddd_"
+ggsave(
+  "admixpops_test_data/plots/han_mds.jpeg",
+  plot = p,
+  device = "jpeg",
+  width = 10,
+  height = 6,
+  scale = 0.8
 )
-
-library(ggplot2)
-mds_raw |>
-  ggplot() +
-  geom_point(aes(x = C1, y = C2, colour = FID))
 
 #### one small population test ####
 
@@ -70,15 +58,20 @@ s('plink1.9 --bfile admixpops_test_data/BantuSA_merged/BantuSA_merged --genome -
 s('plink1.9 --bfile admixpops_test_data/BantuSA_merged/BantuSA_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/BantuSA_mds/pairwise_stats.genome --out admixpops_test_data/BantuSA_mds/mds')
 
 # plot
-mds_raw <- readr::read_delim(
-  "admixpops_test_data/BantuSA_mds/mds.mds", " ", trim_ws = T,
-  col_types = "ccddd_"
-)
+mds_raw <- read_mds("admixpops_test_data/BantuSA_mds/mds.mds")
 
-library(ggplot2)
-mds_raw |>
+p <- mds_raw |>
   ggplot() +
   geom_point(aes(x = C1, y = C2, colour = FID))
+
+ggsave(
+  "admixpops_test_data/plots/BantuSA_mds.jpeg",
+  plot = p,
+  device = "jpeg",
+  width = 10,
+  height = 6,
+  scale = 0.8
+)
 
 #### two populations test ####
 
@@ -88,7 +81,7 @@ ind_admixpops <- partitions::compositions(n = 10, m = 2, include.zero = T) |>
   t() |>
   as.data.frame() |>
   dplyr::mutate(
-    id = 1:dplyr::n(),
+    id = paste(V1, V2, sep = "|"),
     unit = dplyr::case_when(
       V1 > V2 ~ "HanDom",
       V2 > V1 ~ "FrenchDom",
@@ -117,15 +110,24 @@ s('plink1.9 --bfile admixpops_test_data/hanfrench_merged/hanfrench_merged --geno
 s('plink1.9 --bfile admixpops_test_data/hanfrench_merged/hanfrench_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/mds/pairwise_stats.genome --out admixpops_test_data/mds/mds')
 
 # plot
-mds_raw <- readr::read_delim(
-  "admixpops_test_data/mds/mds.mds", " ", trim_ws = T,
-  col_types = "ccddd_"
-)
+mds_raw <- read_mds("admixpops_test_data/mds/mds.mds")
 
-library(ggplot2)
-mds_raw |>
-  ggplot() +
-  geom_point(aes(x = C1, y = C2, colour = FID))
+p <- mds_raw |>
+  dplyr::mutate(
+    label = ifelse(grepl("\\|", IID), IID, NA)
+  ) |>
+  ggplot(aes(x = C1, y = C2, colour = FID, label = label)) +
+  geom_point() +
+  ggrepel::geom_label_repel()
+
+ggsave(
+  "admixpops_test_data/plots/mds_mds.jpeg",
+  plot = p,
+  device = "jpeg",
+  width = 10,
+  height = 6,
+  scale = 0.8
+)
 
 #### three populations test ####
 
@@ -168,21 +170,28 @@ s('plink1.9 --bfile admixpops_test_data/mbutihanfrench_merged/mbutihanfrench_mer
 s('plink1.9 --bfile admixpops_test_data/mbutihanfrench_merged/mbutihanfrench_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/mbutihanfrench_mds/pairwise_stats.genome --out admixpops_test_data/mbutihanfrench_mds/mds')
 
 # plot
-mds_raw <- readr::read_delim(
-  "admixpops_test_data/mbutihanfrench_mds/mds.mds", " ", trim_ws = T,
-  col_types = "ccddd_"
-)
+mds_raw <- read_mds("admixpops_test_data/mbutihanfrench_mds/mds.mds")
 
-library(ggplot2)
-mds_raw |>
+p <- mds_raw |>
   ggplot() +
   geom_point(aes(x = C1, y = C2, colour = FID))
 
-#### admixture analysis ####
+ggsave(
+  "admixpops_test_data/plots/mbutihanfrench_mds.jpeg",
+  plot = p,
+  device = "jpeg",
+  width = 10,
+  height = 6,
+  scale = 0.8
+)
 
-eva.cluster::cluster_down(pw,
+#### three pops: admixture analysis ####
+
+eva.cluster::cluster_down(
+  pw,
   "/mnt/archgen/users/schmid/paagen/playground/admixpops_test_data/admixture_test" ~
-    "~/agora/paagen/playground/admixpops_test_data/admixture_test")
+  "~/agora/paagen/playground/admixpops_test_data/admixture_test"
+)
 
 merged_admixture_results_wide <- list.files(
   "~/agora/paagen/playground/admixpops_test_data/admixture_test/3",
@@ -248,3 +257,26 @@ ggtern() +
   xlab("Mbuti") +
   ylab("Han") +
   zlab("French")
+
+#### one large population test, but with other pops in MDS ####
+
+# create data subset
+dd("admixpops_test_data/hanbonus_merged")
+s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpops_test_data/han -f "HanDom,Han,French,Mbuti" -n hanbonus_merged -o admixpops_test_data/hanbonus_merged')
+
+# mds
+nd("admixpops_test_data/hanbonus_mds")
+s('plink1.9 --bfile admixpops_test_data/hanbonus_merged/hanbonus_merged --genome --out admixpops_test_data/hanbonus_mds/pairwise_stats')
+s('plink1.9 --bfile admixpops_test_data/hanbonus_merged/hanbonus_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/hanbonus_mds/pairwise_stats.genome --out admixpops_test_data/hanbonus_mds/mds')
+
+# plot
+mds_raw <- readr::read_delim(
+  "admixpops_test_data/hanbonus_mds/mds.mds", " ", trim_ws = T,
+  col_types = "ccddd_"
+)
+
+library(ggplot2)
+mds_raw |>
+  ggplot() +
+  geom_point(aes(x = C1, y = C2, colour = FID))
+

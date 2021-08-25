@@ -5,7 +5,8 @@ read_mds <- function(x) {
     col_positions = readr::fwf_empty(
       x,
       skip = 1,
-      col_names = c("FID", "IID", "SOL", "C1", "C2")
+      col_names = c("FID", "IID", "SOL", "C1", "C2"),
+      n = 1000
     ),
     trim_ws = T,
     col_types = "ccddd_",
