@@ -1,3 +1,0 @@
-- V 0.2.0: Changed admixpops default behaviour and added --marginalizeMissing option to preserve the old default. A lot of testcode in playground/
-- V 0.1.1: Simplified output poseidon package for admixpops and spacetime
-- V 0.1.0: First basically working version with generally functional generators admixpops and spacetime

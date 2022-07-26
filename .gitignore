@@ -1,7 +1,7 @@
 docs/_build/
 .stack-work/
 .ipynb_checkpoints/
-playground/spacetime_test_data/
-playground/admixpops_test_data/
+spacetime_test_data/
+admixpops_test_data/
 .Rhistory
 .Rproj.user
