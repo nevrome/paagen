@@ -225,24 +225,28 @@ writeLines(
   "admixpops_test_data/mbutihanfrench_merged/mbutihanfrench_merged.pop"
 )
 
+pw <- "..."
+u <- "..."
+h <- "daghead1.eva.mpg.de"
+
 # upload data to cluster
 eva.cluster::cluster_up(
-  pw,
-  "~/agora/paagen/playground/admixpops_test_data/mbutihanfrench_merged" ~
-    "/mnt/archgen/users/schmid/paagen/playground/admixpops_test_data/mbutihanfrench_merged"
+  "~/agora/paagen/admixpops_test_data/mbutihanfrench_merged/" ~
+    "/mnt/archgen/users/schmid/paagen/admixpops_test_data/mbutihanfrench_merged/",
+  user = u, host = h, pw = pw
 )
 
 # run on cluster: qsub runAdmixture.sh
 
 eva.cluster::cluster_down(
-  pw,
-  "/mnt/archgen/users/schmid/paagen/playground/admixpops_test_data/admixture_test" ~
-    "~/agora/paagen/playground/admixpops_test_data/admixture_test2"
+  "/mnt/archgen/users/schmid/paagen/admixpops_test_data/admixture_test/" ~
+    "~/agora/paagen/admixpops_test_data/admixture_test/",
+  user = u, host = h, pw = pw
 )
 
 # read all results and bring them together
 merged_admixture_results_wide <- list.files(
-  "~/agora/paagen/playground/admixpops_test_data/admixture_test2/3",
+  "~/agora/paagen/admixpops_test_data/admixture_test/3",
   recursive = T,
   pattern = ".Q",
   full.names = T
@@ -292,7 +296,8 @@ merged_admixture_results_long <- merged_admixture_results_wide |>
   )
 
 # plot
-p <- ggtern::ggtern() +
+library(ggtern)
+p <- ggtern() +
   geom_segment(
     data = merged_admixture_results_wide,
     aes(mean_OMbuti, mean_OHan, mean_OFrench, xend = IMbuti, yend = IHan, zend = IFrench), alpha = 0.5
