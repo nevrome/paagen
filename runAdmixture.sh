@@ -13,8 +13,8 @@
 #$ -tc 20 # number of concurrently running tasks in array
 
 ## Set ADMIXTURE run parameters. Output folder, input .bed file, minimum and maximum K values, and Number of CPUs per admixture run.
-fn0="/mnt/archgen/users/schmid/paagen/playground/admixpops_test_data/admixture_test" ## The intended result directory. It will be created, with one subfolder per K (which itself contains one folder per replicate and one 'Logs' folder with the ADMIXTURE logfiles).
-bedFile="/mnt/archgen/users/schmid/paagen/playground/admixpops_test_data/mbutihanfrench_merged/mbutihanfrench_merged.bed" ## The input .bed file you ran ADMIXTURE on.
+fn0="/mnt/archgen/users/schmid/paagen/admixpops_test_data/admixture_test" ## The intended result directory. It will be created, with one subfolder per K (which itself contains one folder per replicate and one 'Logs' folder with the ADMIXTURE logfiles).
+bedFile="/mnt/archgen/users/schmid/paagen/admixpops_test_data/mbutihanfrench_merged/mbutihanfrench_merged.bed" ## The input .bed file you ran ADMIXTURE on.
 Kmin='3' ## The minimum number of Ks you want to run
 Kmax='3' ## The maximum number of Ks you want to run
 Reps='5' ## The number of replicates to run for each K value. We normally use 5 replicates per K.
