@@ -17,10 +17,11 @@ s("trident init --inFormat PLINK --snpSet Other --genoFile admixpops_test_data/p
 #### one large population test ####
 
 # run admixpops
-s(paste0('xerxes admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a "[1:HanDom](Han=100);[2:HanDom](Han=100);[3:HanDom](Han=100);[4:HanDom](Han=100);[5:HanDom](Han=100)" -o admixpops_test_data/han'))
+s('xerxes admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a "[1:HanDom](Han=100);[2:HanDom](Han=100);[3:HanDom](Han=100);[4:HanDom](Han=100);[5:HanDom](Han=100)" -o admixpops_test_data/han')
+s('xerxes admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a "[1c:HanDomChunk](Han=100);[2c:HanDomChunk](Han=100);[3c:HanDomChunk](Han=100);[4c:HanDomChunk](Han=100);[5c:HanDomChunk](Han=100)" -o admixpops_test_data/han_chunks5000 --inChunks')
 
 # create data subset
-s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpops_test_data/han -f "HanDom,Han" -n han_merged -o admixpops_test_data/han_merged')
+s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpops_test_data/han -d admixpops_test_data/han_chunks5000 -f "HanDom,Han,HanDomChunk" -n han_merged -o admixpops_test_data/han_merged')
 
 # mds
 nd("admixpops_test_data/han_mds")
@@ -45,10 +46,11 @@ ggsave(
 
 #### one small population test ####
 
-s(paste0('xerxes admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a "[1:BantuSADom](BantuSA=100);[2:BantuSADom](BantuSA=100);[3:BantuSADom](BantuSA=100);[4:BantuSADom](BantuSA=100);[5:BantuSADom](BantuSA=100)" -o admixpops_test_data/BantuSA'))
+s('xerxes admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a "[1:BantuSADom](BantuSA=100);[2:BantuSADom](BantuSA=100);[3:BantuSADom](BantuSA=100);[4:BantuSADom](BantuSA=100);[5:BantuSADom](BantuSA=100)" -o admixpops_test_data/BantuSA')
+s('xerxes admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a "[1c:BantuSADomChunk](BantuSA=100);[2c:BantuSADomChunk](BantuSA=100);[3c:BantuSADomChunk](BantuSA=100);[4c:BantuSADomChunk](BantuSA=100);[5c:BantuSADomChunk](BantuSA=100)" -o admixpops_test_data/BantuSA_chunks5000 --inChunks')
 
 # create data subset
-s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpops_test_data/BantuSA -f "BantuSADom,BantuSA" -n BantuSA_merged -o admixpops_test_data/BantuSA_merged')
+s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpops_test_data/BantuSA -d admixpops_test_data/BantuSA_chunks5000 -f "BantuSA,BantuSADom,BantuSADomChunk" -n BantuSA_merged -o admixpops_test_data/BantuSA_merged')
 
 # mds
 nd("admixpops_test_data/BantuSA_mds")
@@ -73,7 +75,7 @@ ggsave(
 
 #### two populations test ####
 
-ind_admixpops <- partitions::compositions(n = 10, m = 2, include.zero = T) |>
+combinations <- partitions::compositions(n = 10, m = 2, include.zero = T) |>
   {\(x) x*10}() |>
   as.matrix() |>
   t() |>
@@ -85,7 +87,14 @@ ind_admixpops <- partitions::compositions(n = 10, m = 2, include.zero = T) |>
       V2 > V1 ~ "FrenchDom",
       TRUE ~ "Center"
     )
-  ) |> {\(x) { 
+  )
+
+combinations_chunks <- combinations |> {\(x) {
+  x |>
+    dplyr::mutate(unit = paste0(unit, "Chunk"))
+  }}()
+
+ind_admixpops <- combinations |> {\(x) { 
     purrr::pmap_chr(
       list(x$id, x$unit, x$V1, x$V2),
       \(a,b,c,d) {
@@ -95,11 +104,22 @@ ind_admixpops <- partitions::compositions(n = 10, m = 2, include.zero = T) |>
   }}() |>
   {\(x) paste(x, collapse = ";")}()
 
+ind_admixpops_chunks <- combinations_chunks |> {\(x) { 
+  purrr::pmap_chr(
+    list(x$id, x$unit, x$V1, x$V2),
+    \(a,b,c,d) {
+      paste0("[",a,"c:",b,"]","(Han=",c,"+French=",d,")")
+    }
+  )
+  }}() |>
+  {\(x) paste(x, collapse = ";")}()
+
 # run admixpops
 s(paste0('xerxes admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a \"', ind_admixpops, '\" -o admixpops_test_data/hanfrench'))
+s(paste0('xerxes admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a \"', ind_admixpops_chunks, '\" -o admixpops_test_data/hanfrench_chunks5000 --inChunks'))
 
 # create data subset
-s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpops_test_data/hanfrench -f "HanDom,FrenchDom,Center,Han,French" -n hanfrench_merged -o admixpops_test_data/hanfrench_merged')
+s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpops_test_data/hanfrench -d admixpops_test_data/hanfrench_chunks5000 -f "Han,French,HanDom,FrenchDom,Center,HanDomChunk,FrenchDomChunk,CenterChunk" -n hanfrench_merged -o admixpops_test_data/hanfrench_merged')
 
 # mds
 nd("admixpops_test_data/mds")
@@ -144,6 +164,11 @@ ind_admixpops2_table <- partitions::compositions(n = 10, m = 3, include.zero = T
     )
   )
 
+ind_admixpops2_table_chunks <- ind_admixpops2_table |> {\(x) {
+  x |>
+    dplyr::mutate(unit = paste0(unit, "Chunk"))
+  }}()
+
 ind_admixpops2 <- ind_admixpops2_table |> {\(x) { 
   purrr::pmap_chr(
       list(x$id, x$unit, x$Mbuti, x$Han, x$French),
@@ -154,11 +179,22 @@ ind_admixpops2 <- ind_admixpops2_table |> {\(x) {
   }}() |>
   {\(x) paste(x, collapse = ";")}()
 
+ind_admixpops2_chunks <- ind_admixpops2_table_chunks |> {\(x) { 
+  purrr::pmap_chr(
+    list(x$id, x$unit, x$Mbuti, x$Han, x$French),
+    \(a,b,c,d,e) {
+      paste0("[",a,"c:",b,"]","(Mbuti=",c,"+Han=",d,"+French=",e,")")
+    }
+  )
+}}() |>
+  {\(x) paste(x, collapse = ";")}()
+
 # run admixpops
 s(paste0('xerxes admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a \"', ind_admixpops2, '\" -o admixpops_test_data/mbutihanfrench'))
+s(paste0('xerxes admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a \"', ind_admixpops2_chunks, '\" -o admixpops_test_data/mbutihanfrench_chunks5000 --inChunks'))
 
 # create data subset
-s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpops_test_data/mbutihanfrench -f "MbutiDom,HanDom,FrenchDom,Center,Mbuti,Han,French" -n mbutihanfrench_merged -o admixpops_test_data/mbutihanfrench_merged')
+s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpops_test_data/mbutihanfrench -d admixpops_test_data/mbutihanfrench_chunks5000 -f "Mbuti,Han,French,MbutiDom,HanDom,FrenchDom,Center,MbutiDomChunk,HanDomChunk,FrenchDomChunk,CenterChunk" -n mbutihanfrench_merged -o admixpops_test_data/mbutihanfrench_merged')
 
 # mds
 nd("admixpops_test_data/mbutihanfrench_mds")
@@ -169,11 +205,20 @@ s('plink1.9 --bfile admixpops_test_data/mbutihanfrench_merged/mbutihanfrench_mer
 mds_raw <- read_mds("admixpops_test_data/mbutihanfrench_mds/mds.mds")
 
 p <- mds_raw |>
+  dplyr::mutate(
+    method = dplyr::case_when(
+      grepl("Chunk", FID) ~ "in Chunks",
+      (!grepl("Dom", FID) & FID != "Center") ~ "input",
+      TRUE ~ "per SNP"
+    )
+  ) |>
+  #dplyr::filter(method %in% c("per SNP", "input")) |>
+  dplyr::filter(method %in% c("in Chunks", "input")) |>
   ggplot() +
   geom_point(aes(x = C1, y = C2, colour = FID))
 
 ggsave(
-  "admixpops_test_data/plots/mbutihanfrench_mds.jpeg",
+  "admixpops_test_data/plots/mbutihanfrench_mds_chunks.jpeg",
   plot = p,
   device = "jpeg",
   width = 10,
@@ -181,7 +226,7 @@ ggsave(
   scale = 0.8
 )
 
-#### three pops: now with --marginalizeMissing ####
+#### three pops per SNP: now with --marginalizeMissing ####
 
 # run admixpops
 s(paste0('xerxes admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a \"', ind_admixpops2, '\" --marginalizeMissing -o admixpops_test_data/mbutihanfrench_mm'))

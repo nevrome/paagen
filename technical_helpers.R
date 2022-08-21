@@ -16,14 +16,17 @@ read_mds <- function(x) {
 
 # run system command RStudio
 s <- function(x) {
-  termId <- rstudioapi::terminalCreate()
-  rstudioapi::terminalSend(
-    termId,
-    paste0(
-      x,
-      "\n"
-    )
-  )
+  termId <- rstudioapi::terminalExecute(x)
+  wait(termId)
+  stdout_vec <- rstudioapi::terminalBuffer(termId)
+  rstudioapi::terminalKill(termId)
+  return(stdout_vec)
+}
+
+wait <- function(termId) {
+  while (is.null(rstudioapi::terminalExitCode(termId))) {
+    Sys.sleep(1)
+  }
 }
 
 # run system command
