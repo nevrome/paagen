@@ -6,27 +6,28 @@ library(ggplot2)
 #nd("admixpops_test_data/plots")
 
 # download
-s('trident fetch -d admixpops_test_data -f "*2012_PattersonGenetics*"')
+s('trident fetch -d admixpops_test_data -f "*2012_PattersonGenetics-2.1.3*"')
 
 # pruning
 nd("admixpops_test_data/plink_patterson_pruned")
-s("plink1.9 --bfile admixpops_test_data/2012_PattersonGenetics/2012_PattersonGenetics --exclude pruning_ranges.txt --range --maf --make-bed --out admixpops_test_data/plink_patterson_pruned/pruned")
+s("~/software/plink --bfile admixpops_test_data/2012_PattersonGenetics-2.1.3/2012_PattersonGenetics --exclude pruning_ranges.txt --range --maf --make-bed --out admixpops_test_data/plink_patterson_pruned/pruned")
 
-s("trident init --inFormat PLINK --snpSet Other --genoFile admixpops_test_data/plink_patterson_pruned/pruned.bed --indFile admixpops_test_data/plink_patterson_pruned/pruned.fam --snpFile admixpops_test_data/plink_patterson_pruned/pruned.bim -o admixpops_test_data/2012_PattersonGenetics_pruned -n 2012_PattersonGenetics_pruned")
+s("trident init --snpSet Other -p admixpops_test_data/plink_patterson_pruned/pruned.bed -o admixpops_test_data/2012_PattersonGenetics_pruned -n 2012_PattersonGenetics_pruned")
 
 #### one large population test ####
 
 # run admixpops
 s('xerxes admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a "[1:HanDom](Han=100);[2:HanDom](Han=100);[3:HanDom](Han=100);[4:HanDom](Han=100);[5:HanDom](Han=100)" -o admixpops_test_data/han')
-s('xerxes admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a "[1c:HanDomChunk](Han=100);[2c:HanDomChunk](Han=100);[3c:HanDomChunk](Han=100);[4c:HanDomChunk](Han=100);[5c:HanDomChunk](Han=100)" -o admixpops_test_data/han_chunks5000 --inChunks')
+# here: tangent to test vcf and zipped output
+s('xerxes admixpops -d admixpops_test_data/2012_PattersonGenetics_pruned -a "[1c:HanDomChunk](Han=100);[2c:HanDomChunk](Han=100);[3c:HanDomChunk](Han=100);[4c:HanDomChunk](Han=100);[5c:HanDomChunk](Han=100)" -o admixpops_test_data/han_chunks5000 --inChunks --outFormat VCF --zip')
 
 # create data subset
 s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpops_test_data/han -d admixpops_test_data/han_chunks5000 -f "HanDom,Han,HanDomChunk" -n han_merged -o admixpops_test_data/han_merged')
 
 # mds
 nd("admixpops_test_data/han_mds")
-s('plink1.9 --bfile admixpops_test_data/han_merged/han_merged --genome --out admixpops_test_data/han_mds/pairwise_stats')
-s('plink1.9 --bfile admixpops_test_data/han_merged/han_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/han_mds/pairwise_stats.genome --out admixpops_test_data/han_mds/mds')
+s('~/software/plink --bfile admixpops_test_data/han_merged/han_merged --genome --out admixpops_test_data/han_mds/pairwise_stats')
+s('~/software/plink --bfile admixpops_test_data/han_merged/han_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/han_mds/pairwise_stats.genome --out admixpops_test_data/han_mds/mds')
 
 # plot
 mds_raw <- read_mds("admixpops_test_data/han_mds/mds.mds")
@@ -54,8 +55,8 @@ s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpo
 
 # mds
 nd("admixpops_test_data/BantuSA_mds")
-s('plink1.9 --bfile admixpops_test_data/BantuSA_merged/BantuSA_merged --genome --out admixpops_test_data/BantuSA_mds/pairwise_stats')
-s('plink1.9 --bfile admixpops_test_data/BantuSA_merged/BantuSA_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/BantuSA_mds/pairwise_stats.genome --out admixpops_test_data/BantuSA_mds/mds')
+s('~/software/plink --bfile admixpops_test_data/BantuSA_merged/BantuSA_merged --genome --out admixpops_test_data/BantuSA_mds/pairwise_stats')
+s('~/software/plink --bfile admixpops_test_data/BantuSA_merged/BantuSA_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/BantuSA_mds/pairwise_stats.genome --out admixpops_test_data/BantuSA_mds/mds')
 
 # plot
 mds_raw <- read_mds("admixpops_test_data/BantuSA_mds/mds.mds")
@@ -123,8 +124,8 @@ s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpo
 
 # mds
 nd("admixpops_test_data/mds")
-s('plink1.9 --bfile admixpops_test_data/hanfrench_merged/hanfrench_merged --genome --out admixpops_test_data/mds/pairwise_stats')
-s('plink1.9 --bfile admixpops_test_data/hanfrench_merged/hanfrench_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/mds/pairwise_stats.genome --out admixpops_test_data/mds/mds')
+s('~/software/plink --bfile admixpops_test_data/hanfrench_merged/hanfrench_merged --genome --out admixpops_test_data/mds/pairwise_stats')
+s('~/software/plink --bfile admixpops_test_data/hanfrench_merged/hanfrench_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/mds/pairwise_stats.genome --out admixpops_test_data/mds/mds')
 
 # plot
 mds_raw <- read_mds("admixpops_test_data/mds/mds.mds")
@@ -198,8 +199,8 @@ s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpo
 
 # mds
 nd("admixpops_test_data/mbutihanfrench_mds")
-s('plink1.9 --bfile admixpops_test_data/mbutihanfrench_merged/mbutihanfrench_merged --genome --out admixpops_test_data/mbutihanfrench_mds/pairwise_stats')
-s('plink1.9 --bfile admixpops_test_data/mbutihanfrench_merged/mbutihanfrench_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/mbutihanfrench_mds/pairwise_stats.genome --out admixpops_test_data/mbutihanfrench_mds/mds')
+s('~/software/plink --bfile admixpops_test_data/mbutihanfrench_merged/mbutihanfrench_merged --genome --out admixpops_test_data/mbutihanfrench_mds/pairwise_stats')
+s('~/software/plink --bfile admixpops_test_data/mbutihanfrench_merged/mbutihanfrench_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/mbutihanfrench_mds/pairwise_stats.genome --out admixpops_test_data/mbutihanfrench_mds/mds')
 
 # plot
 mds_raw <- read_mds("admixpops_test_data/mbutihanfrench_mds/mds.mds")
@@ -236,8 +237,8 @@ s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -d admixpo
 
 # mds
 nd("admixpops_test_data/mbutihanfrench_mm_mds")
-s('plink1.9 --bfile admixpops_test_data/mbutihanfrench_mm_merged/mbutihanfrench_mm_merged --genome --out admixpops_test_data/mbutihanfrench_mm_mds/pairwise_stats')
-s('plink1.9 --bfile admixpops_test_data/mbutihanfrench_mm_merged/mbutihanfrench_mm_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/mbutihanfrench_mm_mds/pairwise_stats.genome --out admixpops_test_data/mbutihanfrench_mm_mds/mds')
+s('~/software/plink --bfile admixpops_test_data/mbutihanfrench_mm_merged/mbutihanfrench_mm_merged --genome --out admixpops_test_data/mbutihanfrench_mm_mds/pairwise_stats')
+s('~/software/plink --bfile admixpops_test_data/mbutihanfrench_mm_merged/mbutihanfrench_mm_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/mbutihanfrench_mm_mds/pairwise_stats.genome --out admixpops_test_data/mbutihanfrench_mm_mds/mds')
 
 # plot
 mds_raw <- read_mds("admixpops_test_data/mbutihanfrench_mm_mds/mds.mds")
@@ -377,8 +378,8 @@ s('trident forge -d admixpops_test_data/2012_PattersonGenetics_pruned -p admixpo
 
 # mds
 nd("admixpops_test_data/independenthanfrenchmbuti_mds")
-s('plink1.9 --bfile admixpops_test_data/independenthanfrenchmbuti_merged/independenthanfrenchmbuti_merged --genome --out admixpops_test_data/independenthanfrenchmbuti_mds/pairwise_stats')
-s('plink1.9 --bfile admixpops_test_data/independenthanfrenchmbuti_merged/independenthanfrenchmbuti_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/independenthanfrenchmbuti_mds/pairwise_stats.genome --out admixpops_test_data/independenthanfrenchmbuti_mds/mds')
+s('~/software/plink --bfile admixpops_test_data/independenthanfrenchmbuti_merged/independenthanfrenchmbuti_merged --genome --out admixpops_test_data/independenthanfrenchmbuti_mds/pairwise_stats')
+s('~/software/plink --bfile admixpops_test_data/independenthanfrenchmbuti_merged/independenthanfrenchmbuti_merged --cluster --mds-plot 2 --read-genome admixpops_test_data/independenthanfrenchmbuti_mds/pairwise_stats.genome --out admixpops_test_data/independenthanfrenchmbuti_mds/mds')
 
 # plot
 mds_raw <- read_mds("admixpops_test_data/independenthanfrenchmbuti_mds/mds.mds")
